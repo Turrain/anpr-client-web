@@ -1,13 +1,46 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/tauri";
 import "./App.css";
 import { open } from "@tauri-apps/api/dialog";
+import { listen } from "@tauri-apps/api/event";
+
+import ReactPlayer from 'react-player';
+
+const VideoPlayer = ({ url }) => {
+  return (
+    <div className="player-wrapper">
+      <ReactPlayer
+        url={url}
+        className="react-player"
+        playing
+        controls
+        width="100%"
+        height="100%"
+      />
+    </div>
+  );
+};
+
+//mjpg is a timer update image from url
+
 function App() {
   const [input, setInput] = useState("");
   const [typeNumber, setTypeNumber] = useState(104);
   const [result, setResult] = useState([]);
   const [isVideo, setIsVideo] = useState(false);
+
+  useEffect(() => {
+    const unlisten = listen("anpr-update", event => {
+      setResult(prevResult => [...prevResult, ...event.payload]);
+    });
+
+    return () => {
+      unlisten.then(fn => fn());
+    };
+  }, []);
+
+  
   const handleFileChange = async () => {
     try {
       const selected = await open({
@@ -98,11 +131,12 @@ function App() {
           {input && isVideo && (
             <div>
               <h2>Video Stream</h2>
-              <video controls autoPlay style={{ maxWidth: "100%" }}>
-                <source src={input} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
+              <img src="http://158.58.130.148:80/mjpg/video.mjpg" />
+ 
+
+              <VideoPlayer url={input} />
             </div>
+            
           )}
         </div>
         {result.length > 0 && (
