@@ -36,6 +36,8 @@ import {
   Divider,
   Tooltip,
   styled,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import {
   Add,
@@ -46,8 +48,10 @@ import {
   KeyboardArrowDown,
   Menu,
   Settings,
+  ShowChart,
 } from "@mui/icons-material";
 import CustomizedList from "./SidebarList";
+import React from "react";
 
 const FireNav = styled(List)<{ component?: React.ElementType }>({
   "& .MuiListItemButton-root": {
@@ -107,11 +111,21 @@ function App() {
   const [dialogTypeNumber, setDialogTypeNumber] = useState(104);
   const [openSettingsDialog, setOpenSettingsDialog] = useState(false);
   const [currentStreamIndex, setCurrentStreamIndex] = useState(null);
+  const [serialPorts, setSerialPorts] = useState([]);
+
+  const [openDrawer, setOpenDrawer] = React.useState(false);
+
+  const toggleDrawer = (newOpen: boolean) => () => {
+    setOpenDrawer(newOpen);
+  };
+
   useEffect(() => {
     const unlisten = listen("anpr-update", (event) => {
       setResult((prevResult) => [...prevResult, ...event.payload]);
     });
-
+    invoke("list_serial_ports")
+      .then((ports) => setSerialPorts(ports))
+      .catch(console.error);
     return () => {
       unlisten.then((fn) => fn());
     };
@@ -183,53 +197,99 @@ function App() {
   };
 
   const handleUpdateStream = () => {
-    const newStreams = streams.map((stream, index) => (
-      index === currentStreamIndex ? { url: dialogInput, typeNumber: dialogTypeNumber } : stream
-    ));
+    const newStreams = streams.map((stream, index) =>
+      index === currentStreamIndex
+        ? { url: dialogInput, typeNumber: dialogTypeNumber }
+        : stream
+    );
     setStreams(newStreams);
     setOpenSettingsDialog(false);
     setDialogInput("");
     setDialogTypeNumber(104);
     setCurrentStreamIndex(null);
   };
+
   return (
     <>
       <div style={{ display: "flex" }}>
+        <Drawer
+          PaperProps={{ elevation: 1 }}
+          sx={{
+            width: drawerWidth,
+            flexShrink: 0,
+
+            [`& .MuiDrawer-paper`]: {
+              width: drawerWidth,
+              boxSizing: "border-box",
+              p: 1,
+            },
+          }}
+          open={openDrawer}
+          onClose={toggleDrawer(false)}
+        >
+          <List>
+            {serialPorts.map((stream, index) => (
+              <Paper elevation={2} sx={{ mt: 1, py: 1 }}>
+                <ListItem key={index}>
+                  <ListItemText primary={stream.port_name} />
+                </ListItem>
+                <ListItem dense>
+                  <ListItemIcon>
+                    <Settings />
+                  </ListItemIcon>
+                  <ListItemText>Type: {stream.port_type}</ListItemText>
+                </ListItem>
+              </Paper>
+            ))}
+          </List>
+        </Drawer>
+
         <Drawer
           variant="permanent"
           PaperProps={{ elevation: 1 }}
           sx={{
             width: drawerWidth,
             flexShrink: 0,
-            
+
             [`& .MuiDrawer-paper`]: {
               width: drawerWidth,
               boxSizing: "border-box",
-              p:1
+              p: 1,
             },
           }}
         >
-           <List>
-          {streams.map((stream, index) => (
-            <Paper elevation={10} sx={{mt: 1, py:1}}>
-            <ListItem key={index}>
-              <ListItemText primary={`Поток ${index + 1}`} />
-              <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteStream(index)}>
-                <Delete />
-              </IconButton>
-             
-            </ListItem>
-             <ListItemButton dense  onClick={() => handleOpenSettingsDialog(index)}>
-             <ListItemIcon><Settings/></ListItemIcon>
-             <ListItemText>
-               Настройки
-             </ListItemText>
-           </ListItemButton>
-           </Paper>
-          ))}
-        </List>
+          <List>
+            {streams.map((stream, index) => (
+              <Paper elevation={2} sx={{ mt: 1, py: 1 }}>
+                <ListItem key={index}>
+                  <ListItemText primary={`Поток ${index + 1}`} />
+                  <IconButton
+                    edge="end"
+                    aria-label="delete"
+                    onClick={() => handleDeleteStream(index)}
+                  >
+                    <Delete />
+                  </IconButton>
+                </ListItem>
+                <ListItemButton
+                  dense
+                  onClick={() => handleOpenSettingsDialog(index)}
+                >
+                  <ListItemIcon>
+                    <Settings />
+                  </ListItemIcon>
+                  <ListItemText>Настройки</ListItemText>
+                </ListItemButton>
+              </Paper>
+            ))}
+          </List>
           <List
-            sx={{ width: "100%", maxWidth: 360, bgcolor: "background.paper" }}
+            sx={{
+              width: "100%",
+              maxWidth: 360,
+              bgcolor: "background.paper",
+              marginTop: "auto",
+            }}
             component="nav"
             aria-labelledby="nested-list-subheader"
             subheader={
@@ -243,6 +303,13 @@ function App() {
                 <Add />
               </ListItemIcon>
               <ListItemText primary="Добавить поток" />
+            </ListItemButton>
+
+            <ListItemButton onClick={toggleDrawer(true)}>
+              <ListItemIcon>
+                <ShowChart />
+              </ListItemIcon>
+              <ListItemText primary="Открыть порты" />
             </ListItemButton>
           </List>
           <List>
@@ -328,6 +395,7 @@ function App() {
               </Stack>
             </Paper>
           )}
+
           {streams.length > 0 && (
             <Paper
               sx={{
@@ -344,9 +412,14 @@ function App() {
                     md={getGridItemSize(streams.length)}
                     key={index}
                   >
-                    <Typography variant="h6">{`Поток ${
-                      index + 1
-                    }`}</Typography>
+                    <Typography
+                      sx={{
+                        backgroundColor: "blueviolet",
+                        p: 1,
+                        width: "fit-content",
+                      }}
+                      variant="h6"
+                    >{`Поток ${index + 1}`}</Typography>
                     {stream.url.endsWith(".mjpg") ||
                     stream.url.endsWith(".mjpeg") ? (
                       <img
@@ -362,6 +435,18 @@ function App() {
               </Grid>
             </Paper>
           )}
+
+          {/* <Grid container spacing={2} mt={2}>
+            {serialPorts.map((stream, index) => (
+              <Grid item xs={12} sm={6} md={3} key={index}>
+                <Paper elevation={1} sx={{ p: 1 }}>
+                  <Typography variant="h5">{stream.port_name}</Typography>
+                  <Divider />
+                  <Typography mt={1}>{stream.port_type}</Typography>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid> */}
 
           <Grid container spacing={2}>
             {result.length > 0 && (
@@ -412,52 +497,76 @@ function App() {
             </Button>
           </DialogActions>
         </Dialog>
-        <Dialog open={openSettingsDialog} onClose={() => setOpenSettingsDialog(false)}>
-        <DialogTitle>Stream Settings</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Update the stream URL and type number.
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Stream URL"
-            fullWidth
-            value={dialogInput}
-            onChange={(e) => setDialogInput(e.target.value)}
-          />
-          <TextField
-            margin="dense"
-            label="Type Number"
-            type="number"
-            fullWidth
-            value={dialogTypeNumber}
-            onChange={(e) => setDialogTypeNumber(Number(e.target.value))}
-          />
-              <TextField
-            margin="dense"
-            label="Тип триггера"
-            type="number"
-            fullWidth
-
-          />
+        <Dialog
+          PaperProps={{ elevation: 2 }}
+          open={openSettingsDialog}
+          onClose={() => setOpenSettingsDialog(false)}
+        >
+          <DialogTitle>Настройки потока</DialogTitle>
+          <DialogContent>
+            {/* <DialogContentText>
+              Update the stream URL and type number. 00102037
+            </DialogContentText> */}
             <TextField
-            margin="dense"
-            label="Скорость обработки (кдр/с)"
-            type="number"
-            fullWidth
-        
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenSettingsDialog(false)} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleUpdateStream} color="primary">
-            Update
-          </Button>
-        </DialogActions>
-      </Dialog>
+              autoFocus
+              margin="dense"
+              label="Stream URL"
+              fullWidth
+            
+              value={dialogInput}
+              onChange={(e) => setDialogInput(e.target.value)}
+            />
+            <TextField
+              margin="dense"
+              label="Type Number"
+              type="number"
+              fullWidth
+             
+              value={dialogTypeNumber}
+              onChange={(e) => setDialogTypeNumber(Number(e.target.value))}
+            />
+            <Select
+              labelId="demo-simple-select-standard-label"
+              id="demo-simple-select-standard"
+              // value={age}
+              // onChange={handleChange}
+              label="Тип номеров"
+              
+           
+              fullWidth
+            >
+              
+              <MenuItem value={104}>Казахстанские</MenuItem>
+              <MenuItem value={20}>Twenty</MenuItem>
+              <MenuItem value={30}>Thirty</MenuItem>
+            </Select>
+            <TextField
+              margin="dense"
+              label="Тип триггера"
+              type="number"
+           
+              fullWidth
+            />
+            <TextField
+              margin="dense"
+              label="Скорость обработки (кдр/с)"
+              type="number"
+            
+              fullWidth
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => setOpenSettingsDialog(false)}
+              color="primary"
+            >
+              Отменить
+            </Button>
+            <Button onClick={handleUpdateStream} color="primary">
+              Обновить
+            </Button>
+          </DialogActions>
+        </Dialog>
       </div>
     </>
   );
