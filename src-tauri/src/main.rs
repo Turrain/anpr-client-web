@@ -1,14 +1,21 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use std::{error::Error, path::Path, sync::mpsc::{self, Receiver, channel}, thread};
+use rand::Rng;
 use serde::Serialize;
 use serialport::{available_ports, SerialPortType};
+use std::{
+    error::Error,
+    io,
+    path::Path,
+    sync::mpsc::{self, channel, Receiver},
+    thread,
+    time::Duration,
+};
 use tauri::{command, Manager};
 use tokio::sync::{oneshot, Mutex};
 use ANPR_bind::{anpr_plate, anpr_video, AnprImage, AnprOptions};
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-
 
 #[derive(Serialize)]
 struct PortInfo {
@@ -21,8 +28,64 @@ struct PortInfo {
     product: Option<String>,
     interface: Option<String>,
 }
+#[derive(Serialize, Clone)]
+struct PortData<T>
+where
+    T: Serialize,
+{
+    pub port_name: String,
+    pub data: Vec<T>,
+}
 
+#[tauri::command]
+fn start_serial_communication(window: tauri::Window) {
+    thread::spawn(move || {
+        let mut port1 = serialport::new("COM1", 9600)
+            .timeout(Duration::from_millis(10))
+            .open()
+            .unwrap();
 
+        let mut port2 = serialport::new("COM2", 9600)
+            .timeout(Duration::from_millis(10))
+            .open()
+            .unwrap();
+
+        let mut rng = rand::thread_rng();
+
+        loop {
+            // Listen for data on COM1
+            let mut buffer: Vec<u8> = vec![0; 1024];
+
+            match port1.read(buffer.as_mut_slice()) {
+                Ok(t) => {
+                    let received_data = &buffer[..t];
+                    println!("Received data: {:?}", received_data);
+                    window
+                        .emit(
+                            "received-data",
+                            PortData {
+                                port_name: String::from("COM1"),
+                                data: received_data.to_vec(),
+                            },
+                        )
+                        .expect("Failed to emit event");
+                }
+                Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                Err(e) => eprintln!("{:?}", e),
+            }
+
+            // Generate and send random data to COM2
+            let random_data: u8 = rng.gen();
+            port2
+                .write_all(&[random_data])
+                .expect("Failed to write to COM2");
+            println!("Sent random data: {}", random_data);
+            //  window.emit("sent-data", random_data).expect("Failed to emit event");
+            // Sleep for a short duration to avoid overwhelming the ports
+            thread::sleep(Duration::from_millis(100));
+        }
+    });
+}
 
 #[command]
 fn list_serial_ports() -> Result<Vec<PortInfo>, String> {
@@ -69,8 +132,16 @@ fn list_serial_ports() -> Result<Vec<PortInfo>, String> {
     }
 }
 
+fn should_process_frame(frame_number: usize, desired_fps: f32) -> bool {
+    frame_number as f32 % (30.0 / desired_fps) == 0.0
+}
+
 #[tauri::command]
-async fn process_anpr(input: String, type_number: i32, window: tauri::Window) -> Result<(), String> {
+async fn process_anpr(
+    input: String,
+    type_number: i32,
+    window: tauri::Window,
+) -> Result<(), String> {
     let options = AnprOptions::default()
         .with_type_number(type_number)
         .with_vers("1.6.0");
@@ -92,23 +163,29 @@ async fn process_anpr(input: String, type_number: i32, window: tauri::Window) ->
             Some(ext) if ext.eq_ignore_ascii_case("avi") || ext.eq_ignore_ascii_case("mp4") => {
                 anpr_video(Some(input), type_number, move |results| {
                     window.emit_all("anpr-update", results.clone()).unwrap();
-                }).map_err(|e| e.to_string())?;
-                tx.send(Ok(vec!["Video processing completed".to_string()])).unwrap();
+                }, |frame| { should_process_frame(frame, 5.0) })
+                .map_err(|e| e.to_string())?;
+                tx.send(Ok(vec!["Video processing completed".to_string()]))
+                    .unwrap();
                 Ok(())
             }
             _ => {
                 if input.starts_with("http") || input.starts_with("rtsp") {
                     anpr_video(Some(input), type_number, move |results| {
                         window.emit_all("anpr-update", results.clone()).unwrap();
-                    }).map_err(|e| e.to_string())?;
-                    tx.send(Ok(vec!["Video processing completed".to_string()])).unwrap();
+                    }, |frame| { should_process_frame(frame, 10.0) })
+                    .map_err(|e| e.to_string())?;
+                    tx.send(Ok(vec!["Video processing completed".to_string()]))
+                        .unwrap();
                     Ok(())
                 } else if input.starts_with("/dev/video") {
                     // Assuming Linux device file for camera
                     anpr_video(Some(input), type_number, move |results| {
                         window.emit_all("anpr-update", results.clone()).unwrap();
-                    }).map_err(|e| e.to_string())?;
-                    tx.send(Ok(vec!["Video processing completed".to_string()])).unwrap();
+                    }, |frame| { should_process_frame(frame, 5.0) })
+                    .map_err(|e| e.to_string())?;
+                    tx.send(Ok(vec!["Video processing completed".to_string()]))
+                        .unwrap();
                     Ok(())
                 } else {
                     tx.send(Err("Unsupported file type or URL. Please provide a valid image, video file, or URL.".to_string())).unwrap();
@@ -125,7 +202,11 @@ async fn process_anpr(input: String, type_number: i32, window: tauri::Window) ->
 }
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![process_anpr, list_serial_ports])
+        .invoke_handler(tauri::generate_handler![
+            process_anpr,
+            list_serial_ports,
+            start_serial_communication
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
