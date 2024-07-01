@@ -7,6 +7,7 @@ use std::{
     error::Error,
     io,
     path::Path,
+    process::Command,
     sync::mpsc::{self, channel, Receiver},
     thread,
     time::Duration,
@@ -15,6 +16,12 @@ use tauri::{command, Manager};
 use tokio::sync::{oneshot, Mutex};
 use ANPR_bind::{anpr_plate, anpr_video, AnprImage, AnprOptions};
 
+mod commands;
+mod database;
+mod models;
+mod schema;
+use crate::database::*;
+use crate::models::*;
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 
 #[derive(Serialize)]
@@ -137,6 +144,28 @@ fn should_process_frame(frame_number: usize, desired_fps: f32) -> bool {
 }
 
 #[tauri::command]
+async fn start_rtsp_to_rtmp(rtsp_url: String, rtmp_url: String) -> Result<(), String> {
+    let output = Command::new("ffmpeg")
+        .arg("-i")
+        .arg(rtsp_url)
+        .arg("-c:v")
+        .arg("copy")
+        .arg("-c:a")
+        .arg("copy")
+        .arg("-f")
+        .arg("flv")
+        .arg(rtmp_url)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
 async fn process_anpr(
     input: String,
     type_number: i32,
@@ -161,9 +190,14 @@ async fn process_anpr(
                 Ok(())
             }
             Some(ext) if ext.eq_ignore_ascii_case("avi") || ext.eq_ignore_ascii_case("mp4") => {
-                anpr_video(Some(input), type_number, move |results| {
-                    window.emit_all("anpr-update", results.clone()).unwrap();
-                }, |frame| { should_process_frame(frame, 5.0) })
+                anpr_video(
+                    Some(input),
+                    type_number,
+                    move |results| {
+                        window.emit_all("anpr-update", results.clone()).unwrap();
+                    },
+                    |frame| should_process_frame(frame, 5.0),
+                )
                 .map_err(|e| e.to_string())?;
                 tx.send(Ok(vec!["Video processing completed".to_string()]))
                     .unwrap();
@@ -171,18 +205,28 @@ async fn process_anpr(
             }
             _ => {
                 if input.starts_with("http") || input.starts_with("rtsp") {
-                    anpr_video(Some(input), type_number, move |results| {
-                        window.emit_all("anpr-update", results.clone()).unwrap();
-                    }, |frame| { should_process_frame(frame, 10.0) })
+                    anpr_video(
+                        Some(input),
+                        type_number,
+                        move |results| {
+                            window.emit_all("anpr-update", results.clone()).unwrap();
+                        },
+                        |frame| should_process_frame(frame, 10.0),
+                    )
                     .map_err(|e| e.to_string())?;
                     tx.send(Ok(vec!["Video processing completed".to_string()]))
                         .unwrap();
                     Ok(())
                 } else if input.starts_with("/dev/video") {
                     // Assuming Linux device file for camera
-                    anpr_video(Some(input), type_number, move |results| {
-                        window.emit_all("anpr-update", results.clone()).unwrap();
-                    }, |frame| { should_process_frame(frame, 5.0) })
+                    anpr_video(
+                        Some(input),
+                        type_number,
+                        move |results| {
+                            window.emit_all("anpr-update", results.clone()).unwrap();
+                        },
+                        |frame| should_process_frame(frame, 5.0),
+                    )
                     .map_err(|e| e.to_string())?;
                     tx.send(Ok(vec!["Video processing completed".to_string()]))
                         .unwrap();
@@ -201,11 +245,38 @@ async fn process_anpr(
     Ok(())
 }
 fn main() {
+    let mut conn = establish_connection();
+    // Create a new counterparty entry
+    let new_counterparty = NewCounterparty {
+        formal_name: "Company Inc.",
+        formal_address: "123 Street",
+        bin: "123456789",
+        full_name: "John Doe",
+    };
+
+    let counterparty = create_counterparty(&mut conn, new_counterparty);
+
+    // Use the created counterparty's ID for dest_to and dest_from
+    let new_car_weight_manual = NewCarWeightManual {
+        brutto: 1.0,
+        netto: 2.0,
+        tara: 3.0,
+        car_plate_number: "ABC123",
+        status: "active",
+        dest_to: Some(counterparty.id.unwrap()), // Assuming `id` is Option<i32>
+        dest_from: Some(counterparty.id.unwrap()), // Assuming `id` is Option<i32>
+        cargo_type: "type1",
+    };
+
+    let car_weight_manual = create_car_weight_manual(&mut conn, new_car_weight_manual);
+    let all_car_weight_manuals = get_all_car_weight_manuals(&mut conn);
+    println!("{:?}", all_car_weight_manuals);
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             process_anpr,
             list_serial_ports,
-            start_serial_communication
+            start_serial_communication,
+            start_rtsp_to_rtmp
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

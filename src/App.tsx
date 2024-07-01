@@ -221,7 +221,16 @@ function App() {
     setDialogTypeNumber(104);
     setCurrentStreamIndex(null);
   };
-
+  const [rtspUrl, setRtspUrl] = useState('');
+  const [rtmpUrl, setRtmpUrl] = useState('');
+  const startBroadcast = async () => {
+    try {
+      await invoke('start_rtsp_to_rtmp', { rtspUrl, rtmpUrl });
+      alert('Broadcast started!');
+    } catch (e) {
+      alert('Failed to start broadcast: ' + e);
+    }
+  };
   return (
     <>
       <div style={{ display: "flex" }}>
@@ -370,6 +379,17 @@ function App() {
               </ListItemIcon>
               <ListItemText primary="Открыть порты" />
             </ListItemButton>
+
+            <ListItem>
+              <TextField size="small" label="RTSP" value={rtspUrl}  onChange={(e) => setRtspUrl(e.target.value)}/>
+              </ListItem>
+              <ListItem>
+
+              <TextField size="small" label="RTMP" value={rtmpUrl}  onChange={(e) => setRtmpUrl(e.target.value)}/>
+              </ListItem>
+              <ListItem>
+              <Button fullWidth onClick={startBroadcast}>Start Broadcast</Button>
+              </ListItem>
           </List>
           <List>
           
