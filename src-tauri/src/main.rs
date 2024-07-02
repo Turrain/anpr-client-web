@@ -15,13 +15,14 @@ use std::{
 use tauri::{command, Manager};
 use tokio::sync::{oneshot, Mutex};
 use ANPR_bind::{anpr_plate, anpr_video, AnprImage, AnprOptions};
-
+#[macro_use]
 mod commands;
 mod database;
 mod models;
 mod schema;
 use crate::database::*;
 use crate::models::*;
+use crate::commands::*;
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 
 #[derive(Serialize)]
@@ -245,38 +246,51 @@ async fn process_anpr(
     Ok(())
 }
 fn main() {
-    let mut conn = establish_connection();
-    // Create a new counterparty entry
-    let new_counterparty = NewCounterparty {
-        formal_name: "Company Inc.",
-        formal_address: "123 Street",
-        bin: "123456789",
-        full_name: "John Doe",
-    };
+    // let mut conn = establish_connection();
+    // // Create a new counterparty entry
+    // let new_counterparty = NewCounterparty {
+    //     formal_name: "Company Inc.",
+    //     formal_address: "123 Street",
+    //     bin: "123456789",
+    //     full_name: "John Doe",
+    // };
 
-    let counterparty = create_counterparty(&mut conn, new_counterparty);
+    // let counterparty = create_counterparty(&mut conn, new_counterparty);
 
-    // Use the created counterparty's ID for dest_to and dest_from
-    let new_car_weight_manual = NewCarWeightManual {
-        brutto: 1.0,
-        netto: 2.0,
-        tara: 3.0,
-        car_plate_number: "ABC123",
-        status: "active",
-        dest_to: Some(counterparty.id.unwrap()), // Assuming `id` is Option<i32>
-        dest_from: Some(counterparty.id.unwrap()), // Assuming `id` is Option<i32>
-        cargo_type: "type1",
-    };
+    // // Use the created counterparty's ID for dest_to and dest_from
+    // let new_car_weight_manual = NewCarWeightManual {
+    //     brutto: 1.0,
+    //     netto: 2.0,
+    //     tara: 3.0,
+    //     car_plate_number: "ABC123",
+    //     status: "active",
+    //     dest_to: Some(counterparty.id.unwrap()), // Assuming `id` is Option<i32>
+    //     dest_from: Some(counterparty.id.unwrap()), // Assuming `id` is Option<i32>
+    //     cargo_type: "type1",
+    // };
 
-    let car_weight_manual = create_car_weight_manual(&mut conn, new_car_weight_manual);
-    let all_car_weight_manuals = get_all_car_weight_manuals(&mut conn);
-    println!("{:?}", all_car_weight_manuals);
+    // let car_weight_manual = create_car_weight_manual(&mut conn, new_car_weight_manual);
+    // let all_car_weight_manuals = get_all_car_weight_manuals(&mut conn);
+    // println!("{:?}", all_car_weight_manuals);
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             process_anpr,
             list_serial_ports,
             start_serial_communication,
-            start_rtsp_to_rtmp
+            start_rtsp_to_rtmp,
+
+            cmd_get_all_car_weights_auto,
+            cmd_create_car_weights_auto,
+            cmd_get_car_weights_auto_by_id,
+            cmd_get_all_car_weight_manuals,
+            cmd_create_car_weight_manual,
+            cmd_get_car_weight_manual_by_id,
+            cmd_get_all_counterparties,
+            cmd_create_counterparty,
+            cmd_get_counterparty_by_id,
+            cmd_update_car_weight_manual,
+            cmd_update_car_weights_auto,
+            cmd_update_counterparty
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

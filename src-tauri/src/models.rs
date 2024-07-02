@@ -1,9 +1,10 @@
 use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::schema::{car_weights_auto,car_weight_manual,counterparty};
 use diesel::sqlite::Sqlite;
 
-#[derive(Queryable, Selectable,Debug)]
+#[derive(Queryable, Selectable,Debug, Serialize, Deserialize)]
 #[diesel(table_name = crate::schema::car_weight_manual)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct CarWeightManual {
@@ -18,7 +19,7 @@ pub struct CarWeightManual {
     pub cargo_type: String,
 }
 
-#[derive(Insertable,Debug)]
+#[derive(Insertable,Debug, Serialize, Deserialize,AsChangeset)]
 #[diesel(table_name = car_weight_manual)]
 pub struct NewCarWeightManual<'a> {
     pub brutto: f32,
@@ -31,7 +32,7 @@ pub struct NewCarWeightManual<'a> {
     pub cargo_type: &'a str,
 }
 
-#[derive(Queryable, Selectable,Debug)]
+#[derive(Queryable, Selectable,Debug, Serialize, Deserialize)]
 #[diesel(table_name = crate::schema::car_weights_auto)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct CarWeightsAuto {
@@ -43,7 +44,7 @@ pub struct CarWeightsAuto {
     pub time_updated: String,
 }
 
-#[derive(Insertable,Debug)]
+#[derive(Insertable,Debug, Serialize, Deserialize, AsChangeset)]
 #[diesel(table_name = car_weights_auto)]
 pub struct NewCarWeightsAuto<'a> {
     pub car_plate_number: &'a str,
@@ -53,7 +54,7 @@ pub struct NewCarWeightsAuto<'a> {
     pub time_updated: &'a str,
 }
 
-#[derive(Queryable, Selectable,Debug)]
+#[derive(Queryable, Selectable,Debug, Serialize, Deserialize)]
 #[diesel(table_name = crate::schema::counterparty)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Counterparty {
@@ -64,7 +65,7 @@ pub struct Counterparty {
     pub full_name: String,
 }
 
-#[derive(Insertable,Debug)]
+#[derive(Insertable,Debug, AsChangeset)]
 #[diesel(table_name = counterparty)]
 pub struct NewCounterparty<'a> {
     pub formal_name: &'a str,

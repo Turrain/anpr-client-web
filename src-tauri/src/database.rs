@@ -120,3 +120,30 @@ pub fn get_counterparty_by_id(conn: &mut SqliteConnection, entry_id: i32) -> Opt
         .optional()
         .expect("Error loading counterparty entry")
 }
+
+pub fn update_car_weight_manual(conn: &mut SqliteConnection, entry_id: i32, updated_car_weight_manual: NewCarWeightManual) -> bool {
+    use crate::schema::car_weight_manual::dsl::*;
+
+    diesel::update(car_weight_manual.filter(id.eq(entry_id)))
+        .set(&updated_car_weight_manual)
+        .execute(conn)
+        .is_ok()
+}
+
+pub fn update_car_weights_auto(conn: &mut SqliteConnection, entry_id: i32, updated_car_weights_auto: NewCarWeightsAuto) -> bool {
+    use crate::schema::car_weights_auto::dsl::*;
+
+    diesel::update(car_weights_auto.filter(id.eq(entry_id)))
+        .set(&updated_car_weights_auto)
+        .execute(conn)
+        .is_ok()
+}
+
+pub fn update_counterparty(conn: &mut SqliteConnection, entry_id: i32, updated_counterparty: NewCounterparty) -> bool {
+    use crate::schema::counterparty::dsl::*;
+
+    diesel::update(counterparty.filter(id.eq(entry_id)))
+        .set(&updated_counterparty)
+        .execute(conn)
+        .is_ok()
+}
