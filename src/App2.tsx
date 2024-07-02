@@ -17,6 +17,7 @@ import CreateCounterpartyItem from './components/Counterparty/CreateCounterparty
 import CreateAutoCarItem from './components/AutoCar/CreateAutoCarItem';
 import CounterpartyItemsList from './components/Counterparty/CounterpartyItemsList';
 import AutoCarItemsList from './components/AutoCar/AutoCarItemsList';
+import { DefPortPage } from './components/Port/PortPage';
 const drawerWidth = 240;
 const App = () => {
   return (
@@ -102,7 +103,7 @@ const App = () => {
       <Toolbar />
         <Box mt={3}>
         <Routes>
-             <Route path="/" element={<>TEST</>} />
+             <Route path="/" element={<DefPortPage/>} />
             <Route path="/manual" element={<ManualCarItemsList />} />
             <Route path="/auto" element={<AutoCarItemsList />} />
             <Route path="/counterparty" element={<CounterpartyItemsList />} />
