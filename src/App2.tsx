@@ -18,8 +18,30 @@ import CreateAutoCarItem from './components/AutoCar/CreateAutoCarItem';
 import CounterpartyItemsList from './components/Counterparty/CounterpartyItemsList';
 import AutoCarItemsList from './components/AutoCar/AutoCarItemsList';
 import { DefPortPage } from './components/Port/PortPage';
+
+import { invoke } from '@tauri-apps/api/core';
+import { requestPermission,isPermissionGranted,sendNotification } from '@tauri-apps/plugin-notification';
 const drawerWidth = 240;
 const App = () => {
+  const sendNotification1 = async () => {
+    let permissionGranted = await isPermissionGranted();
+    console.log(permissionGranted);
+    // If not we need to request it
+    if (!permissionGranted) {
+      const permission = await requestPermission();
+      console.log(permission);
+      permissionGranted = permission === 'granted';
+    }
+    
+    // Once permission has been granted we can send the notification
+    if (permissionGranted) {
+      sendNotification({ title: 'Tauri', body: 'Tauri is awesome!' });
+    }
+  };
+  const startCommunication = async () => {
+    await invoke("start_serial_communication");
+   
+  };
   return (
     <Router>
      <Box sx={{ display: 'flex' }}>
@@ -97,9 +119,11 @@ const App = () => {
             </ListItem>
           ))}
         </List>
+        <Button onClick={sendNotification1}>Send Notification</Button>
+        <Button onClick={startCommunication}>Start Communication</Button>
       </Drawer>
       
-      <Box sx={{width:'100%', px:4}}>
+      <Box sx={{width:'100%'}}>
       <Toolbar />
         <Box mt={3}>
         <Routes>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Typography, TextField, Button } from '@mui/material';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const UpdateAutoCarItem = () => {

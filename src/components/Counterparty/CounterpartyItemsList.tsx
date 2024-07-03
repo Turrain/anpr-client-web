@@ -3,7 +3,7 @@ import { Container, Typography, CircularProgress, IconButton, Box } from '@mui/m
 import { DataGrid, GridColDef, GridRowsProp } from '@mui/x-data-grid';
 import { Delete, Edit } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 
 const CounterpartyItemsList = () => {
   const [items, setItems] = useState([]);

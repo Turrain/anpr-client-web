@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Container, Typography, TextField, Button } from '@mui/material';
-import { invoke } from '@tauri-apps/api/tauri';
+
 import { useNavigate } from 'react-router-dom';
+import { invoke } from '@tauri-apps/api/core';
 
 const CreateCounterpartyItem = () => {
   const [formalName, setFormalName] = useState('');

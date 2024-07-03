@@ -4,7 +4,7 @@ import { Paper, Stack, Typography } from "@mui/material";
 import { listen } from "@tauri-apps/api/event";
 import { useSnackbar } from "notistack";
 import PortList from "./PortList";
-import { invoke } from "@tauri-apps/api";
+import { invoke } from '@tauri-apps/api/core';
 
 const PortPage = ({
   receivedData,
@@ -25,13 +25,13 @@ const PortPage = ({
 
   useEffect(() => {
     const unlistenReceived = listen("received-data", (event) => {
-      setReceivedData((prevData) => [...prevData, event.payload].slice(-49));
-      if (event.payload.data > 100) {
-        enqueueSnackbar(`THIS : ${event.payload.data}`, {
-          anchorOrigin: { horizontal: "right", vertical: "top" },
-          variant: "error",
-        });
-      }
+      setReceivedData((prevData) => [...prevData, event.payload].slice(-40));
+      // if (event.payload.data > 100) {
+      //   enqueueSnackbar(`THIS : ${event.payload.data}`, {
+      //     anchorOrigin: { horizontal: "right", vertical: "top" },
+      //     variant: "error",
+      //   });
+      // }
     });
 
     return () => {
@@ -58,8 +58,9 @@ const PortPage = ({
   return (
     <Paper
       className="custom-scrollbar"
-      elevation={4}
+      elevation={1}
       sx={{
+      
         width: "100%",
         overflow: "auto",
         maxHeight: "97dvh",
@@ -87,6 +88,7 @@ export function DefPortPage() {
   
   return (
     <Stack direction="row">
+      
       <PortList
         serialPorts={serialPorts}
      

@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import { Delete, Edit } from "@mui/icons-material";
 import { Link } from "react-router-dom";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from '@tauri-apps/api/core';
 import { DataGrid, GridColDef, GridRowsProp } from "@mui/x-data-grid";
 
 import {  Card, CardContent, Button, CardMedia, useTheme } from '@mui/material';
