@@ -19,6 +19,12 @@
     "dialog:allow-open",
     "dialog:default",
     "fs:default",
-    "shell:default"
+    "shell:default",
+    "event:allow-emit",
+    "event:allow-emit-to",
+    "event:allow-listen",
+    "event:allow-unlisten",
+    "notification:allow-is-permission-granted", 
+    "notification:default"
   ]
 }
