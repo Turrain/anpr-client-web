@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Container, CssBaseline, Typography, AppBar, Toolbar, Button, Box, Divider, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 
@@ -21,8 +21,21 @@ import { DefPortPage } from './components/Port/PortPage';
 
 import { invoke } from '@tauri-apps/api/core';
 import { requestPermission,isPermissionGranted,sendNotification } from '@tauri-apps/plugin-notification';
+import CameraManager from './components/Camera/CameraPage';
 const drawerWidth = 240;
 const App = () => {
+  const [typeNumber, setTypeNumber] = useState(104);
+  const [streams, setStreams] = useState([]);
+  const handleProcess = async (input) => {
+    try {
+      const response = await invoke('process_anpr', { input, typeNumber });
+      console.log({ response });
+      setResult(response);
+    } catch (error) {
+      console.error('Error processing ANPR:', error);
+    }
+  };
+
   const sendNotification1 = async () => {
     let permissionGranted = await isPermissionGranted();
     console.log(permissionGranted);
@@ -108,16 +121,36 @@ const App = () => {
         </List>
         <Divider />
         <List>
-          {['Камеры', 'COM-порты', 'Выгрузка'].map((text, index) => (
-            <ListItem key={text} disablePadding>
+
+        <ListItem  disablePadding>
               <ListItemButton>
                 <ListItemIcon>
-                  {index % 2 === 0 ? <Inbox /> : <Mail />}
-                </ListItemIcon>
-                <ListItemText primary={text} />
+                <Inbox /> 
+                </ListItemIcon >
+                
+                <Button color="inherit" component={Link} to="/ports">КОМ порты</Button>
+       
               </ListItemButton>
             </ListItem>
-          ))}
+
+            <ListItem  disablePadding>
+              <ListItemButton>
+                <ListItemIcon>
+                <Inbox /> 
+                </ListItemIcon>
+                <Button color="inherit" component={Link} to="/cameras">Камеры</Button>
+              </ListItemButton>
+            </ListItem>
+
+            <ListItem  disablePadding>
+              <ListItemButton>
+                <ListItemIcon>
+                <Inbox /> 
+                </ListItemIcon>
+                <ListItemText primary={"text"} />
+              </ListItemButton>
+            </ListItem>
+         
         </List>
         <Button onClick={sendNotification1}>Send Notification</Button>
         <Button onClick={startCommunication}>Start Communication</Button>
@@ -125,9 +158,10 @@ const App = () => {
       
       <Box sx={{width:'100%'}}>
       <Toolbar />
-        <Box mt={3}>
+        <Box mt={0}>
         <Routes>
-             <Route path="/" element={<DefPortPage/>} />
+             <Route path="/ports" element={<DefPortPage/>} />
+             <Route path="/cameras" element={<CameraManager streams={streams} setStreams={setStreams} handleProcess={undefined}/>} />
             <Route path="/manual" element={<ManualCarItemsList />} />
             <Route path="/auto" element={<AutoCarItemsList />} />
             <Route path="/counterparty" element={<CounterpartyItemsList />} />

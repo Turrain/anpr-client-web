@@ -24,8 +24,9 @@ const PortPage = ({
   }, []);
 
   useEffect(() => {
-    const unlistenReceived = listen("received-data", (event) => {
+    const unlistenReceived = listen("port-data", (event) => {
       setReceivedData((prevData) => [...prevData, event.payload].slice(-40));
+      console.log(event.payload)
       // if (event.payload.data > 100) {
       //   enqueueSnackbar(`THIS : ${event.payload.data}`, {
       //     anchorOrigin: { horizontal: "right", vertical: "top" },

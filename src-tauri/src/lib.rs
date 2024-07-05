@@ -36,20 +36,78 @@ struct PortInfo {
     product: Option<String>,
     interface: Option<String>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct SerialPortSettings {
+    port_name: String,
+    baud_rate: u32,
+    data_bits: u8,
+    stop_bits: u8,
+    parity: u8,
+    flow_control: u8,
+    driver: i32,
+}
+
+
 #[derive(Serialize, Clone)]
 struct PortData<T>
 where
     T: Serialize,
 {
     pub port_name: String,
-    pub data: Vec<T>,
+    pub data: T,
 }
+const SCALES_DATA_DRIVER:i32 = 1;
+const SERIAL_DATA_DRIVER:i32 = 2;
+
+fn read_from_serial_data(port_name: &str, buffer: &[u8], driver: i32, window: Window){
+    match driver {
+        SCALES_DATA_DRIVER => {
+            if let Some(data) = extract_numeric_data(buffer) {
+                window.emit("port-data", PortData { port_name: port_name.to_string(), data: data} ).expect("Failed to emit event");
+            }
+        }
+        SERIAL_DATA_DRIVER => {
+            window.emit("port-data", PortData { port_name: port_name.to_string(), data: buffer.to_vec() }).expect("Failed to emit event");
+        }
+        _ => {
+            eprintln!("Unknown driver type: {}", driver);
+        }
+    }
+
+}
+fn extract_numeric_data(buffer: &[u8]) -> Option<String> {
+    // Find and extract the pattern 77 ... 0D 0A
+    if let Some(start) = buffer.iter().position(|&x| x == 0x77) {
+        if let Some(end) = buffer.iter().skip(start).position(|&x| x == 0x0D) {
+            let end = end + start + 1;
+            if buffer.get(end) == Some(&0x0A) {
+                let pattern = &buffer[start..end + 1];
+                let numeric_data: String = pattern
+                    .iter()
+                    .filter_map(|&c| {
+                        if c.is_ascii_digit() {
+                            Some(c as char)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                return Some(numeric_data);
+            }
+        }
+    }
+    None
+}
+
+
 #[tauri::command]
-fn read_serial_port(port_name: String, window: Window) {
+fn read_serial_port(port_name: String,driver: i32, window: Window) {
     let (tx, rx) = channel();
 
     // Spawn the thread to read from the serial port
     let port_name_clone = port_name.clone();
+    println!("{}",port_name_clone.clone());
     thread::spawn(move || {
         let mut port = serialport::new(port_name_clone, 9600)
             .timeout(Duration::from_millis(10))
@@ -77,15 +135,7 @@ fn read_serial_port(port_name: String, window: Window) {
         loop {
             match rx.try_recv() {
                 Ok(data) => {
-                    window
-                        .emit(
-                            "port-data",
-                            PortData {
-                                port_name: port_name_clone.clone(),
-                                data,
-                            },
-                        )
-                        .expect("Failed to emit event");
+                    read_from_serial_data(&port_name_clone, &data, driver, window.clone());
                 }
                 Err(_) => (),
             }
@@ -97,10 +147,10 @@ fn read_serial_port(port_name: String, window: Window) {
 #[tauri::command]
 fn start_serial_communication() {
     thread::spawn(move || {
-        let mut port1 = serialport::new("COM1", 9600)
-            .timeout(Duration::from_millis(10))
-            .open()
-            .unwrap();
+        // let mut port1 = serialport::new("COM1", 9600)
+        //     .timeout(Duration::from_millis(10))
+        //     .open()
+        //     .unwrap();
 
         let mut port2 = serialport::new("COM2", 9600)
             .timeout(Duration::from_millis(10))
@@ -111,27 +161,27 @@ fn start_serial_communication() {
 
         loop {
             // Listen for data on COM1
-            let mut buffer: Vec<u8> = vec![0; 1024];
+            // let mut buffer: Vec<u8> = vec![0; 1024];
 
-            match port1.read(buffer.as_mut_slice()) {
-                Ok(t) => {
-                    let received_data = &buffer[..t];
-                    println!("Received data: {:?}", received_data);
+            // match port1.read(buffer.as_mut_slice()) {
+            //     Ok(t) => {
+            //         let received_data = &buffer[..t];
+            //    //     println!("Received data: {:?}", received_data);
                     
-                }
-                Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                Err(e) => eprintln!("{:?}", e),
-            }
+            //     }
+            //     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+            //     Err(e) => eprintln!("{:?}", e),
+            // }
 
             // Generate and send random data to COM2
             let random_data: u8 = rng.gen();
             port2
                 .write_all(&[random_data])
                 .expect("Failed to write to COM2");
-            println!("Sent random data: {}", random_data);
+               println!("Sent random data: {}", random_data);
             //  window.emit("sent-data", random_data).expect("Failed to emit event");
             // Sleep for a short duration to avoid overwhelming the ports
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(1500));
         }
     });
 }
