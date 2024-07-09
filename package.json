@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "tauri": "tauri"
   },
@@ -28,7 +28,9 @@
     "react-player": "^2.16.0",
     "react-router-dom": "^6.24.0",
     "react-window": "^1.8.10",
-    "styled-components": "^6.1.11"
+    "styled-components": "^6.1.11",
+    "@react-buddy/ide-toolbox": "^2.4.0",
+    "@react-buddy/palette-mui": "^5.0.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0-beta.21",

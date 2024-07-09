@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use rand::Rng;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serialport::{available_ports, SerialPortType};
 use std::{
     error::Error,
@@ -15,134 +15,18 @@ use std::{
 use tauri::{command, Manager, Window};
 use tokio::sync::{oneshot, Mutex};
 use ANPR_bind::{anpr_plate, anpr_video, AnprImage, AnprOptions};
-#[macro_use]
+#[macro_use] 
 mod commands;
 mod database;
 mod models;
 mod schema;
+#[macro_use] 
+mod port_commands;
 use crate::database::*;
 use crate::models::*;
 use crate::commands::*;
+use crate::port_commands::*;
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-
-#[derive(Serialize)]
-struct PortInfo {
-    port_name: String,
-    port_type: String,
-    vid: Option<u16>,
-    pid: Option<u16>,
-    serial_number: Option<String>,
-    manufacturer: Option<String>,
-    product: Option<String>,
-    interface: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct SerialPortSettings {
-    port_name: String,
-    baud_rate: u32,
-    data_bits: u8,
-    stop_bits: u8,
-    parity: u8,
-    flow_control: u8,
-    driver: i32,
-}
-
-
-#[derive(Serialize, Clone)]
-struct PortData<T>
-where
-    T: Serialize,
-{
-    pub port_name: String,
-    pub data: T,
-}
-const SCALES_DATA_DRIVER:i32 = 1;
-const SERIAL_DATA_DRIVER:i32 = 2;
-
-fn read_from_serial_data(port_name: &str, buffer: &[u8], driver: i32, window: Window){
-    match driver {
-        SCALES_DATA_DRIVER => {
-            if let Some(data) = extract_numeric_data(buffer) {
-                window.emit("port-data", PortData { port_name: port_name.to_string(), data: data} ).expect("Failed to emit event");
-            }
-        }
-        SERIAL_DATA_DRIVER => {
-            window.emit("port-data", PortData { port_name: port_name.to_string(), data: buffer.to_vec() }).expect("Failed to emit event");
-        }
-        _ => {
-            eprintln!("Unknown driver type: {}", driver);
-        }
-    }
-
-}
-fn extract_numeric_data(buffer: &[u8]) -> Option<String> {
-    // Find and extract the pattern 77 ... 0D 0A
-    if let Some(start) = buffer.iter().position(|&x| x == 0x77) {
-        if let Some(end) = buffer.iter().skip(start).position(|&x| x == 0x0D) {
-            let end = end + start + 1;
-            if buffer.get(end) == Some(&0x0A) {
-                let pattern = &buffer[start..end + 1];
-                let numeric_data: String = pattern
-                    .iter()
-                    .filter_map(|&c| {
-                        if c.is_ascii_digit() {
-                            Some(c as char)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                return Some(numeric_data);
-            }
-        }
-    }
-    None
-}
-
-
-#[tauri::command]
-fn read_serial_port(port_name: String,driver: i32, window: Window) {
-    let (tx, rx) = channel();
-
-    // Spawn the thread to read from the serial port
-    let port_name_clone = port_name.clone();
-    println!("{}",port_name_clone.clone());
-    thread::spawn(move || {
-        let mut port = serialport::new(port_name_clone, 9600)
-            .timeout(Duration::from_millis(10))
-            .open()
-            .unwrap();
-
-        loop {
-            let mut buffer: Vec<u8> = vec![0; 1024];
-
-            match port.read(buffer.as_mut_slice()) {
-                Ok(t) => {
-                    let received_data = &buffer[..t];
-                    println!("Received data: {:?}", received_data);
-                    tx.send(received_data.to_vec()).unwrap();
-                }
-                Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                Err(e) => eprintln!("{:?}", e),
-            }
-        }
-    });
-
-    // Spawn the thread to send data to the Tauri frontend
-    let port_name_clone = port_name.clone();
-    thread::spawn(move || {
-        loop {
-            match rx.try_recv() {
-                Ok(data) => {
-                    read_from_serial_data(&port_name_clone, &data, driver, window.clone());
-                }
-                Err(_) => (),
-            }
-        }
-    });
-}
-
 
 #[tauri::command]
 fn start_serial_communication() {
@@ -152,7 +36,7 @@ fn start_serial_communication() {
         //     .open()
         //     .unwrap();
 
-        let mut port2 = serialport::new("COM2", 9600)
+        let mut port2 = serialport::new("COM2", 1200)
             .timeout(Duration::from_millis(10))
             .open()
             .unwrap();
@@ -175,10 +59,14 @@ fn start_serial_communication() {
 
             // Generate and send random data to COM2
             let random_data: u8 = rng.gen();
+            let random_number: u16 = rng.gen_range(1000..9999);
+            let formatted_text = format!("wn{}kg\r\n", random_number);
+            let text_bytes = formatted_text.as_bytes();
+            
             port2
-                .write_all(&[random_data])
+                .write_all(text_bytes)
                 .expect("Failed to write to COM2");
-               println!("Sent random data: {}", random_data);
+               println!("Sent random data: {}", random_number);
             //  window.emit("sent-data", random_data).expect("Failed to emit event");
             // Sleep for a short duration to avoid overwhelming the ports
             thread::sleep(Duration::from_millis(1500));
@@ -186,50 +74,6 @@ fn start_serial_communication() {
     });
 }
 
-#[command]
-fn list_serial_ports() -> Result<Vec<PortInfo>, String> {
-    match serialport::available_ports() {
-        Ok(ports) => {
-            let mut port_info_list = Vec::new();
-            for p in ports {
-                let port_type = match p.port_type {
-                    SerialPortType::UsbPort(ref info) => {
-                        #[cfg(feature = "usbportinfo-interface")]
-                        port_info_list.push(PortInfo {
-                            port_name: p.port_name.clone(),
-                            port_type: "USB".to_string(),
-                            vid: Some(info.vid),
-                            pid: Some(info.pid),
-                            serial_number: info.serial_number.clone(),
-                            manufacturer: info.manufacturer.clone(),
-                            product: info.product.clone(),
-                            interface: info.interface.as_ref().map(|x| format!("{:02x}", *x)),
-                        });
-                        "USB".to_string()
-                    }
-                    SerialPortType::BluetoothPort => "Bluetooth".to_string(),
-                    SerialPortType::PciPort => "PCI".to_string(),
-                    SerialPortType::Unknown => "Unknown".to_string(),
-                };
-
-                if port_type != "USB".to_string() {
-                    port_info_list.push(PortInfo {
-                        port_name: p.port_name,
-                        port_type,
-                        vid: None,
-                        pid: None,
-                        serial_number: None,
-                        manufacturer: None,
-                        product: None,
-                        interface: None,
-                    });
-                }
-            }
-            Ok(port_info_list)
-        }
-        Err(e) => Err(format!("Error listing serial ports: {:?}", e)),
-    }
-}
 
 fn should_process_frame(frame_number: usize, desired_fps: f32) -> bool {
     frame_number as f32 % (30.0 / desired_fps) == 0.0
@@ -346,10 +190,15 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             process_anpr,
-            list_serial_ports,
+     
             start_serial_communication,
             start_rtsp_to_rtmp,
+          
+
             read_serial_port,
+            stop_serial_port,
+            load_serial_port_settings, 
+            list_serial_ports, 
 
             cmd_get_all_car_weights_auto,
             cmd_create_car_weights_auto,
