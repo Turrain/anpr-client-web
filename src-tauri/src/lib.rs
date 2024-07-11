@@ -22,10 +22,14 @@ mod models;
 mod schema;
 #[macro_use] 
 mod port_commands;
+#[macro_use] 
+mod camera_commands;
+mod shared_state;
 use crate::database::*;
 use crate::models::*;
 use crate::commands::*;
 use crate::port_commands::*;
+use crate::camera_commands::*;
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 
 #[tauri::command]
@@ -199,6 +203,10 @@ pub fn run() {
             stop_serial_port,
             load_serial_port_settings, 
             list_serial_ports, 
+            
+            stop_stream,
+            start_stream,
+            change_stream,
 
             cmd_get_all_car_weights_auto,
             cmd_create_car_weights_auto,

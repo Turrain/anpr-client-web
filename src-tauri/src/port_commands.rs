@@ -3,6 +3,8 @@ use serialport::SerialPortType;
 use tauri::{Manager, Window};
 use std::{thread, sync::{mpsc::channel, Arc, Mutex}, time::Duration, io};
 
+use crate::shared_state::SHARED_STATE;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct PortInfo {
     port_name: String,
@@ -174,12 +176,16 @@ impl SerialComm {
 fn read_from_serial_data(port_name: &str, buffer: &[u8], driver: i32, window: Window) {
     match driver {
         SCALES_DATA_DRIVER => {
-            if let Some(data) = extract_numeric_data(buffer) {
-                window.emit("port-data", PortData { port_name: port_name.to_string(), data })
+           if let Some(data) = extract_numeric_data(buffer) {
+                window.emit("port-data", PortData { port_name: port_name.to_string(), data: data.clone() })
                     .expect("Failed to emit event");
+                if let Ok(weight) = data.parse::<f32>() {
+                    SHARED_STATE.lock().unwrap().update_port_data(weight);
+                }
             }
         }
         SERIAL_DATA_DRIVER => {
+            let data_str = String::from_utf8(buffer.to_vec()).expect("Invalid UTF-8");
             window.emit("port-data", PortData { port_name: port_name.to_string(), data: buffer.to_vec() })
                 .expect("Failed to emit event");
         }

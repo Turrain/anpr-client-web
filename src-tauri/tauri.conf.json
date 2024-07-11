@@ -8,6 +8,7 @@
 
   "bundle": {
     "active": true,
+    "category": "Business",
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -21,12 +22,15 @@
   "productName": "anpr-client",
   "version": "0.0.0",
   "identifier": "com.anprweb.dev",
- 
+  
   "plugins": {
-   
+   "updater" : {
+    "active": false,
+    "pubkey": ""
+   }
   },
   "app": {
-   
+    
     "security": {
       "csp": null
     },

@@ -18,6 +18,7 @@ import { Delete, Settings, Camera, Add } from "@mui/icons-material";
 import VideoPlayer from "./VideoPlayer";
 import AddStreamDialog from "./StreamCreateDialog";
 import StreamSettingsDialog from "./StreamSettingsDialog";
+import { invoke } from "@tauri-apps/api/core";
 
 const getGridItemSize = (numStreams) => {
   if (numStreams === 1) {
@@ -42,11 +43,14 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
       { url: dialogInput, typeNumber: dialogTypeNumber },
     ]);
     setOpenDialog(false);
+    startCameraStream(dialogInput);
   };
 
   const handleDeleteStream = (index) => {
+    const streamToDelete = streams[index];
     const newStreams = streams.filter((_, i) => i !== index);
     setStreams(newStreams);
+    stopCameraStream(streamToDelete.url);
   };
 
   const handleOpenSettingsDialog = (index) => {
@@ -69,12 +73,37 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
     setCurrentStreamIndex(null);
   };
 
+  const startCameraStream = async (url) => {
+    try {
+      await invoke("start_stream", { url });
+      console.log(`Started camera stream: ${url}`);
+    } catch (error) {
+      console.error(`Failed to start camera stream: ${url}`, error);
+    }
+  };
+
+  const stopCameraStream = async (url) => {
+    try {
+      await invoke("stop_stream", { url });
+      console.log(`Stopped camera stream: ${url}`);
+    } catch (error) {
+      console.error(`Failed to stop camera stream: ${url}`, error);
+    }
+  };
+
+  useEffect(() => {
+    streams.forEach((stream) => startCameraStream(stream.url));
+    return () => {
+      streams.forEach((stream) => stopCameraStream(stream.url));
+    };
+  }, []);
+
   return (
     <>
       <Stack direction="row">
         <List>
           {streams?.map((stream, index) => (
-            <Paper elevation={2} sx={{  py: 1 }} key={index}>
+            <Paper elevation={2} sx={{ py: 1 }} key={index}>
               <ListItem>
                 <ListItemText primary={`Поток ${index + 1}`} />
                 <IconButton
@@ -128,10 +157,10 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
             <ListItemText primary="Добавить поток" />
           </ListItemButton>
         </List>
-        {!streams ? (
+        {streams.length === 0 ? (
           <Paper
             sx={{
-                flex: 1,
+              flex: 1,
               height: "calc(100dvh - 48px)",
               display: "flex",
               alignItems: "center",
@@ -149,7 +178,9 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
             </div>
           </Paper>
         ) : (
-          <Paper sx={{ height: "calc(100dvh - 48px)", flex: 1, display: "flex" }}>
+          <Paper
+            sx={{ height: "calc(100dvh - 48px)", flex: 1, display: "flex" }}
+          >
             <Grid container spacing={2}>
               {streams?.map((stream, index) => (
                 <Grid
@@ -213,5 +244,6 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
     </>
   );
 };
+
 
 export default CameraManager;
