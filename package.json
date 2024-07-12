@@ -17,6 +17,9 @@
     "@mui/material": "^5.15.20",
     "@mui/styled-engine-sc": "^6.0.0-alpha.18",
     "@mui/x-data-grid": "^7.8.0",
+    "@mui/x-data-grid-pro": "^7.10.0",
+    "@react-buddy/ide-toolbox": "^2.4.0",
+    "@react-buddy/palette-mui": "^5.0.1",
     "@tauri-apps/api": ">=2.0.0-beta.0",
     "@tauri-apps/plugin-dialog": "^2.0.0-beta.6",
     "@tauri-apps/plugin-fs": "^2.0.0-beta.6",
@@ -28,9 +31,7 @@
     "react-player": "^2.16.0",
     "react-router-dom": "^6.24.0",
     "react-window": "^1.8.10",
-    "styled-components": "^6.1.11",
-    "@react-buddy/ide-toolbox": "^2.4.0",
-    "@react-buddy/palette-mui": "^5.0.1"
+    "styled-components": "^6.1.11"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0-beta.21",

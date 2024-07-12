@@ -30,6 +30,8 @@ use crate::models::*;
 use crate::commands::*;
 use crate::port_commands::*;
 use crate::camera_commands::*;
+mod rf_shared_state;
+use crate::rf_shared_state::*;
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 
 #[tauri::command]
@@ -105,95 +107,96 @@ async fn start_rtsp_to_rtmp(rtsp_url: String, rtmp_url: String) -> Result<(), St
     }
 }
 
-#[tauri::command]
-async fn process_anpr(
-    input: String,
-    type_number: i32,
-    window: tauri::Window,
-) -> Result<(), String> {
-    let options = AnprOptions::default()
-        .with_type_number(type_number)
-        .with_vers("1.6.0");
+// #[tauri::command]
+// async fn process_anpr(
+//     input: String,
+//     type_number: i32,
+//     window: tauri::Window,
+// ) -> Result<(), String> {
+//     let options = AnprOptions::default()
+//         .with_type_number(type_number)
+//         .with_vers("1.6.0");
 
-    let (tx, rx) = oneshot::channel();
+//     let (tx, rx) = oneshot::channel();
 
-    let handle = tokio::spawn(async move {
-        let result = match Path::new(&input).extension().and_then(|s| s.to_str()) {
-            Some(ext)
-                if ext.eq_ignore_ascii_case("jpg")
-                    || ext.eq_ignore_ascii_case("jpeg")
-                    || ext.eq_ignore_ascii_case("png") =>
-            {
-                let img = AnprImage::load_image(&input).map_err(|e| e.to_string())?;
-                let plate_numbers = anpr_plate(&img, &options).map_err(|e| e.to_string())?;
-                tx.send(Ok(plate_numbers)).unwrap();
-                Ok(())
-            }
-            Some(ext) if ext.eq_ignore_ascii_case("avi") || ext.eq_ignore_ascii_case("mp4") => {
-                anpr_video(
-                    Some(input),
-                    type_number,
-                    move |results| {
-                        window.emit("anpr-update", results.clone()).unwrap();
-                    },
-                    |frame| should_process_frame(frame, 5.0),
-                )
-                .map_err(|e| e.to_string())?;
-                tx.send(Ok(vec!["Video processing completed".to_string()]))
-                    .unwrap();
-                Ok(())
-            }
-            _ => {
-                if input.starts_with("http") || input.starts_with("rtsp") {
-                    anpr_video(
-                        Some(input),
-                        type_number,
-                        move |results| {
-                            window.emit("anpr-update", results.clone()).unwrap();
-                        },
-                        |frame| should_process_frame(frame, 10.0),
-                    )
-                    .map_err(|e| e.to_string())?;
-                    tx.send(Ok(vec!["Video processing completed".to_string()]))
-                        .unwrap();
-                    Ok(())
-                } else if input.starts_with("/dev/video") {
-                    // Assuming Linux device file for camera
-                    anpr_video(
-                        Some(input),
-                        type_number,
-                        move |results| {
-                            window.emit("anpr-update", results.clone()).unwrap();
-                        },
-                        |frame| should_process_frame(frame, 5.0),
-                    )
-                    .map_err(|e| e.to_string())?;
-                    tx.send(Ok(vec!["Video processing completed".to_string()]))
-                        .unwrap();
-                    Ok(())
-                } else {
-                    tx.send(Err("Unsupported file type or URL. Please provide a valid image, video file, or URL.".to_string())).unwrap();
-                    Err("Unsupported file type or URL".to_string())
-                }
-            }
-        };
-        result
-    });
+//     let handle = tokio::spawn(async move {
+//         let result = match Path::new(&input).extension().and_then(|s| s.to_str()) {
+//             Some(ext)
+//                 if ext.eq_ignore_ascii_case("jpg")
+//                     || ext.eq_ignore_ascii_case("jpeg")
+//                     || ext.eq_ignore_ascii_case("png") =>
+//             {
+//                 let img = AnprImage::load_image(&input).map_err(|e| e.to_string())?;
+//                 let plate_numbers = anpr_plate(&img, &options).map_err(|e| e.to_string())?;
+//                 tx.send(Ok(plate_numbers)).unwrap();
+//                 Ok(())
+//             }
+//             Some(ext) if ext.eq_ignore_ascii_case("avi") || ext.eq_ignore_ascii_case("mp4") => {
+//                 anpr_video(
+//                     Some(input),
+//                     type_number,
+//                     move |results| {
+//                         window.emit("anpr-update", results.clone()).unwrap();
+//                     },
+//                     |frame| should_process_frame(frame, 5.0),
+//                 )
+//                 .map_err(|e| e.to_string())?;
+//                 tx.send(Ok(vec!["Video processing completed".to_string()]))
+//                     .unwrap();
+//                 Ok(())
+//             }
+//             _ => {
+//                 if input.starts_with("http") || input.starts_with("rtsp") {
+//                     anpr_video(
+//                         Some(input),
+//                         type_number,
+//                         move |results| {
+//                             window.emit("anpr-update", results.clone()).unwrap();
+//                         },
+//                         |frame| should_process_frame(frame, 10.0),
+//                     )
+//                     .map_err(|e| e.to_string())?;
+//                     tx.send(Ok(vec!["Video processing completed".to_string()]))
+//                         .unwrap();
+//                     Ok(())
+//                 } else if input.starts_with("/dev/video") {
+//                     // Assuming Linux device file for camera
+//                     anpr_video(
+//                         Some(input),
+//                         type_number,
+//                         move |results| {
+//                             window.emit("anpr-update", results.clone()).unwrap();
+//                         },
+//                         |frame| should_process_frame(frame, 5.0),
+//                     )
+//                     .map_err(|e| e.to_string())?;
+//                     tx.send(Ok(vec!["Video processing completed".to_string()]))
+//                         .unwrap();
+//                     Ok(())
+//                 } else {
+//                     tx.send(Err("Unsupported file type or URL. Please provide a valid image, video file, or URL.".to_string())).unwrap();
+//                     Err("Unsupported file type or URL".to_string())
+//                 }
+//             }
+//         };
+//         result
+//     });
 
-    handle.await.map_err(|e| e.to_string())??;
-    rx.await.map_err(|e| e.to_string())?;
-    Ok(())
-}
+//     handle.await.map_err(|e| e.to_string())??;
+//     rx.await.map_err(|e| e.to_string())?;
+//     Ok(())
+// }
 
 pub fn run() {
    print!("TETETETE");
+    let t = SerialPort::new();
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
-            process_anpr,
+           // process_anpr,
      
             start_serial_communication,
             start_rtsp_to_rtmp,

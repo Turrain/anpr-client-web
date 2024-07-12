@@ -1,5 +1,5 @@
 
-use std::sync::Arc;
+use std::{env, sync::Arc};
 use lazy_static::lazy_static;
 use tokio::sync::{Mutex, oneshot};
 use tauri::{Manager, Window};
@@ -24,11 +24,14 @@ fn should_process_frame(frame_number: usize, desired_fps: f32) -> bool {
 async fn start_camera_stream(url: String, window: Window) -> Result<(), String> {
     let (tx, rx) = oneshot::channel();
     let cloned_url = url.clone();
+    let current_dir = env::current_dir().expect("msg");
+    let img = current_dir.join("test.jpg");
     let handle = tokio::spawn(async move {
         let options = AnprOptions::default().with_type_number(1).with_vers("1.6.0");
 
         let result = anpr_video(
             Some(cloned_url.clone()),
+            Some(String::from(img.to_str().expect("msg"))),
             104,
             move |results| {
                 window.emit("anpr-update", results.clone()).unwrap();
@@ -37,6 +40,7 @@ async fn start_camera_stream(url: String, window: Window) -> Result<(), String> 
                 }
             },
             |frame| should_process_frame(frame, 10.0),
+            |frame| {if let Some(val) = SHARED_STATE.lock().unwrap().port_data { return val  > 5000f32} else {return true} }
         )
         .map_err(|e| e.to_string());
 
