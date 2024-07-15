@@ -40,7 +40,7 @@ async fn start_camera_stream(url: String, window: Window) -> Result<(), String> 
                 }
             },
             |frame| should_process_frame(frame, 10.0),
-            |frame| {if let Some(val) = SHARED_STATE.lock().unwrap().port_data { return val  > 5000f32} else {return true} }
+          
         )
         .map_err(|e| e.to_string());
 

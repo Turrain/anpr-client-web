@@ -30,6 +30,7 @@ use crate::models::*;
 use crate::commands::*;
 use crate::port_commands::*;
 use crate::camera_commands::*;
+#[macro_use] 
 mod rf_shared_state;
 use crate::rf_shared_state::*;
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
@@ -189,15 +190,25 @@ async fn start_rtsp_to_rtmp(rtsp_url: String, rtmp_url: String) -> Result<(), St
 
 pub fn run() {
    print!("TETETETE");
-    let t = SerialPort::new();
+   
     tauri::Builder::default()
+        
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
            // process_anpr,
-     
+           configure_port, 
+           start_port, 
+           stop_port, 
+           start_camera, 
+           stop_camera, 
+           change_camera,
+            //--------------------
+
+
+
             start_serial_communication,
             start_rtsp_to_rtmp,
           
@@ -210,7 +221,7 @@ pub fn run() {
             stop_stream,
             start_stream,
             change_stream,
-
+            //---------------------------
             cmd_get_all_car_weights_auto,
             cmd_create_car_weights_auto,
             cmd_get_car_weights_auto_by_id,
