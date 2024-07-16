@@ -1,12 +1,12 @@
 use std::{
     env, io,
     sync::{Arc, Mutex},
-    thread,
+    thread::{self, sleep},
     time::Duration,
 };
 
 use serde::{Deserialize, Serialize};
-use tauri::{command, State, Window};
+use tauri::{async_runtime::spawn, command, State, Window};
 use tokio::sync::mpsc::{self, Sender};
 use ANPR_bind::{anpr_video, AnprOptions};
 
@@ -34,7 +34,6 @@ pub struct SerialPortConfig {
 }
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CameraConfig {
-    name: String,
     url: String,
 }
 
@@ -199,7 +198,7 @@ impl SerialPort {
                     match port.read(buffer.as_mut_slice()) {
                         Ok(bytes_read) => {
                             let data = buffer[..bytes_read].to_vec();
-
+                            println!("{:?}", data);
                             if sender.blocking_send(data).is_err() {
                                 eprintln!("Failed to send data");
                                 break;
@@ -321,8 +320,8 @@ impl SerialPort {
 // }
 
 pub struct AppState {
-    camera: Camera,
-    port: SerialPort,
+    pub camera: Camera,
+    pub port: SerialPort,
 }
 
 #[command]
@@ -351,7 +350,7 @@ pub fn stop_camera(state: State<'_, AppState>)  {
 }
 
 #[command]
-pub fn change_camera(config:CameraConfig, state: State<'_, AppState>) {
+pub fn configure_camera(config:CameraConfig, state: State<'_, AppState>) {
     state.camera.set_config(config);
 }
 
@@ -360,27 +359,34 @@ pub fn change_camera(config:CameraConfig, state: State<'_, AppState>) {
 fn should_process_frame(frame_number: usize, desired_fps: f32) -> bool {
     frame_number as f32 % (30.0 / desired_fps) == 0.0
 }
-
-pub async fn main_control(state: State<'_, AppState>, window: Window) {
-    loop {
-        if let Some(serial_data) = state.port.receive_callback().await {
-            if serial_data.len() > 1000 {
-                state.camera.run();
-                if let Some(camera_data) = state.camera.receive_callback().await {
-                    println!("Camera data: {:?}", camera_data);
-                    // Process both serial data and camera data
-                    if serial_data.len() > 1000 && !camera_data.is_empty() {
-                        // Export this struct or perform your desired actions
-                        println!(
-                            "Exporting data: Serial Data  = {:?}, Camera Data = {:?}",
-                            serial_data,
-                            camera_data
-                        );
+#[command]
+async fn main_control(state: State<'_, AppState>, window: Window) {
+    let state = state.inner().clone();
+    thread::spawn(move || {
+        tauri::async_runtime::block_on(async move {
+            loop {
+                if let Some(serial_data) = state.port.lock().unwrap().receive_callback().await {
+                    if serial_data.len() > 1000 {
+                        tauri::async_runtime::block_on(async {
+                            tauri::invoke(&window, "start_camera", ()).await.unwrap();
+                        });
+                        if let Some(camera_data) = state.camera.lock().unwrap().receive_callback().await {
+                            println!("Camera data: {:?}", camera_data);
+                            if serial_data.len() > 1000 && !camera_data.is_empty() {
+                                println!(
+                                    "Exporting data: Serial Data  = {:?}, Camera Data = {:?}",
+                                    serial_data,
+                                    camera_data
+                                );
+                            }
+                        }
+                        tauri::async_runtime::block_on(async {
+                            tauri::invoke(&window, "stop_camera", ()).await.unwrap();
+                        });
                     }
                 }
+                sleep(Duration::from_millis(500)).await;
             }
-            state.camera.stop()
-        }
-        tokio::time::sleep(Duration::from_millis(500)).await;
-    }
+        });
+    });
 }

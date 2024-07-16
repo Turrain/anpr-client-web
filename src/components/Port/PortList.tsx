@@ -5,10 +5,16 @@ import {
   Button,
   Stack,
   Typography,
-  IconButton, Dialog, DialogTitle, DialogContent, TextField, DialogActions,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  DialogActions,
 } from "@mui/material";
-import {Settings, Stop, Usb} from "@mui/icons-material";
-import { invoke } from '@tauri-apps/api/core';
+import { Settings, Stop, Usb } from "@mui/icons-material";
+import { invoke } from "@tauri-apps/api/core";
+
 
 interface PortInfo {
   port_name: string;
@@ -47,7 +53,7 @@ const PortList: React.FC<PortListProps> = ({ serialPorts }) => {
 
   const startReading = async () => {
     const settings = {
-      port_name: portName,
+      name: portName,
       baud_rate: baudRate,
       data_bits: dataBits,
       stop_bits: stopBits,
@@ -56,25 +62,26 @@ const PortList: React.FC<PortListProps> = ({ serialPorts }) => {
       driver: driver
     };
     try {
-      await invoke('read_serial_port', { settings });
+      await invoke('configure_port', { config: settings });
+      await invoke('start_port');
       setRunningPort(portName);
     } catch (error) {
-      console.error('Failed to invoke read_serial_port command', error);
+      console.error('Failed to invoke configure_port or start_port command', error);
     }
   };
 
   const stopReading = async () => {
     try {
-      await invoke('stop_serial_port');
+      await invoke('stop_port');
       setRunningPort(null);
     } catch (error) {
-      console.error('Failed to invoke stop_serial_communication command', error);
+      console.error('Failed to invoke stop_port command', error);
     }
   };
 
   const saveSettings = () => {
     const settings = {
-      port_name: portName,
+      name: portName,
       baud_rate: baudRate,
       data_bits: dataBits,
       stop_bits: stopBits,
@@ -94,93 +101,93 @@ const PortList: React.FC<PortListProps> = ({ serialPorts }) => {
   };
 
   return (
-      <Paper elevation={0} sx={{ width: "100%", maxWidth: "300px", p: 2 }}>
-        <Stack gap={2}>
-          {serialPorts?.map((port, index) => (
-              <Stack key={index} direction="row" justifyContent="space-between" sx={{ borderBottom: '1px solid black' }}>
-                <Stack>
-                  <Typography variant="body1">{port.port_name}</Typography>
-                  <Typography variant="caption">{port.port_type}</Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-evenly">
-                  <IconButton onClick={() => openSettingsDialog(port.port_name)}>
-                    <Settings />
-                  </IconButton>
-                  {runningPort === port.port_name ? (
-                      <IconButton onClick={stopReading}>
-                        <Stop />
-                      </IconButton>
-                  ) : (
-                      <IconButton onClick={() => {
-                        setPortName(port.port_name);
-                        startReading();
-                      }} disabled={runningPort !== null}>
-                        <Usb />
-                      </IconButton>
-                  )}
-                </Stack>
-              </Stack>
-          ))}
-        </Stack>
-        <Dialog open={settingsDialogOpen} onClose={closeSettingsDialog}>
-          <DialogTitle>Port Settings</DialogTitle>
-          <DialogContent>
-            <TextField
-                margin="dense"
-                label="Driver"
-                type="number"
-                value={driver}
-                onChange={e => setDriver(parseInt(e.target.value))}
-                fullWidth
-            />
-            <TextField
-                margin="dense"
-                label="Baud Rate"
-                type="number"
-                value={baudRate}
-                onChange={e => setBaudRate(parseInt(e.target.value))}
-                fullWidth
-            />
-            <TextField
-                margin="dense"
-                label="Data Bits"
-                type="number"
-                value={dataBits}
-                onChange={e => setDataBits(parseInt(e.target.value))}
-                fullWidth
-            />
-            <TextField
-                margin="dense"
-                label="Stop Bits"
-                type="number"
-                value={stopBits}
-                onChange={e => setStopBits(parseInt(e.target.value))}
-                fullWidth
-            />
-            <TextField
-                margin="dense"
-                label="Parity"
-                type="number"
-                value={parity}
-                onChange={e => setParity(parseInt(e.target.value))}
-                fullWidth
-            />
-            <TextField
-                margin="dense"
-                label="Flow Control"
-                type="number"
-                value={flowControl}
-                onChange={e => setFlowControl(parseInt(e.target.value))}
-                fullWidth
-            />
-            {/* Add more fields as needed */}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={closeSettingsDialog} color="primary">Cancel</Button>
-            <Button onClick={saveSettings} color="primary">Save</Button>
-          </DialogActions>
-        </Dialog>
-      </Paper>
+    <Paper elevation={0} sx={{ width: "100%", maxWidth: "300px", p: 2 }}>
+      <Stack gap={2}>
+        {serialPorts?.map((port, index) => (
+          <Stack key={index} direction="row" justifyContent="space-between" sx={{ borderBottom: '1px solid black' }}>
+            <Stack>
+              <Typography variant="body1">{port.port_name}</Typography>
+              <Typography variant="caption">{port.port_type}</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-evenly">
+              <IconButton onClick={() => openSettingsDialog(port.port_name)}>
+                <Settings />
+              </IconButton>
+              {runningPort === port.port_name ? (
+                <IconButton onClick={stopReading}>
+                  <Stop />
+                </IconButton>
+              ) : (
+                <IconButton onClick={() => {
+                  setPortName(port.port_name);
+                  startReading();
+                }} disabled={runningPort !== null}>
+                  <Usb />
+                </IconButton>
+              )}
+            </Stack>
+          </Stack>
+        ))}
+      </Stack>
+      <Dialog open={settingsDialogOpen} onClose={closeSettingsDialog}>
+        <DialogTitle>Port Settings</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="Driver"
+            type="number"
+            value={driver}
+            onChange={e => setDriver(parseInt(e.target.value))}
+            fullWidth
+          />
+          <TextField
+            margin="dense"
+            label="Baud Rate"
+            type="number"
+            value={baudRate}
+            onChange={e => setBaudRate(parseInt(e.target.value))}
+            fullWidth
+          />
+          <TextField
+            margin="dense"
+            label="Data Bits"
+            type="number"
+            value={dataBits}
+            onChange={e => setDataBits(parseInt(e.target.value))}
+            fullWidth
+          />
+          <TextField
+            margin="dense"
+            label="Stop Bits"
+            type="number"
+            value={stopBits}
+            onChange={e => setStopBits(parseInt(e.target.value))}
+            fullWidth
+          />
+          <TextField
+            margin="dense"
+            label="Parity"
+            type="number"
+            value={parity}
+            onChange={e => setParity(parseInt(e.target.value))}
+            fullWidth
+          />
+          <TextField
+            margin="dense"
+            label="Flow Control"
+            type="number"
+            value={flowControl}
+            onChange={e => setFlowControl(parseInt(e.target.value))}
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeSettingsDialog} color="primary">Cancel</Button>
+          <Button onClick={saveSettings} color="primary">Save</Button>
+        </DialogActions>
+      </Dialog>
+    </Paper>
   );
 };
+
 export default PortList;

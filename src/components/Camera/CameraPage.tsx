@@ -1,5 +1,5 @@
 // CameraManager.jsx
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Grid,
   Paper,
@@ -20,6 +20,7 @@ import AddStreamDialog from "./StreamCreateDialog";
 import StreamSettingsDialog from "./StreamSettingsDialog";
 import { invoke } from "@tauri-apps/api/core";
 
+
 const getGridItemSize = (numStreams) => {
   if (numStreams === 1) {
     return 12;
@@ -37,20 +38,18 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
   const [dialogInput, setDialogInput] = useState("");
   const [dialogTypeNumber, setDialogTypeNumber] = useState(104);
 
-  const handleAddStream = (dialogInput, dialogTypeNumber) => {
-    setStreams([
-      ...streams,
-      { url: dialogInput, typeNumber: dialogTypeNumber },
-    ]);
+  const handleAddStream = async (dialogInput, dialogTypeNumber) => {
+    const newStream = { url: dialogInput, typeNumber: dialogTypeNumber };
+    setStreams([...streams, newStream]);
     setOpenDialog(false);
-    startCameraStream(dialogInput);
+    await startCameraStream(newStream);
   };
 
-  const handleDeleteStream = (index) => {
+  const handleDeleteStream = async (index) => {
     const streamToDelete = streams[index];
     const newStreams = streams.filter((_, i) => i !== index);
     setStreams(newStreams);
-    stopCameraStream(streamToDelete.url);
+    await stopCameraStream(streamToDelete);
   };
 
   const handleOpenSettingsDialog = (index) => {
@@ -60,41 +59,51 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
     setOpenSettingsDialog(true);
   };
 
-  const handleUpdateStream = () => {
+  const handleUpdateStream = async () => {
+    const updatedStream = { url: dialogInput, typeNumber: dialogTypeNumber };
     const newStreams = streams.map((stream, index) =>
-      index === currentStreamIndex
-        ? { url: dialogInput, typeNumber: dialogTypeNumber }
-        : stream
+      index === currentStreamIndex ? updatedStream : stream
     );
     setStreams(newStreams);
     setOpenSettingsDialog(false);
     setDialogInput("");
     setDialogTypeNumber(104);
     setCurrentStreamIndex(null);
+    await configureCameraStream(updatedStream);
   };
 
-  const startCameraStream = async (url) => {
+  const startCameraStream = async (stream) => {
     try {
-      await invoke("start_stream", { url });
-      console.log(`Started camera stream: ${url}`);
+      await invoke("configure_camera", { config: { name: `Camera ${streams.length + 1}`, url: stream.url } });
+      await invoke("start_camera");
+      console.log(`Started camera stream: ${stream.url}`);
     } catch (error) {
-      console.error(`Failed to start camera stream: ${url}`, error);
+      console.error(`Failed to start camera stream: ${stream.url}`, error);
     }
   };
 
-  const stopCameraStream = async (url) => {
+  const stopCameraStream = async (stream) => {
     try {
-      await invoke("stop_stream", { url });
-      console.log(`Stopped camera stream: ${url}`);
+      await invoke("stop_camera");
+      console.log(`Stopped camera stream: ${stream.url}`);
     } catch (error) {
-      console.error(`Failed to stop camera stream: ${url}`, error);
+      console.error(`Failed to stop camera stream: ${stream.url}`, error);
+    }
+  };
+
+  const configureCameraStream = async (stream) => {
+    try {
+      await invoke("configure_camera", { config: { name: `Camera ${currentStreamIndex + 1}`, url: stream.url } });
+      console.log(`Configured camera stream: ${stream.url}`);
+    } catch (error) {
+      console.error(`Failed to configure camera stream: ${stream.url}`, error);
     }
   };
 
   useEffect(() => {
-    streams.forEach((stream) => startCameraStream(stream.url));
+    streams.forEach(startCameraStream);
     return () => {
-      streams.forEach((stream) => stopCameraStream(stream.url));
+      streams.forEach(stopCameraStream);
     };
   }, []);
 
@@ -114,10 +123,7 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
                   <Delete />
                 </IconButton>
               </ListItem>
-              <ListItemButton
-                dense
-                onClick={() => handleOpenSettingsDialog(index)}
-              >
+              <ListItemButton dense onClick={() => handleOpenSettingsDialog(index)}>
                 <ListItemIcon>
                   <Settings />
                 </ListItemIcon>
@@ -178,9 +184,7 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
             </div>
           </Paper>
         ) : (
-          <Paper
-            sx={{ height: "calc(100dvh - 48px)", flex: 1, display: "flex" }}
-          >
+          <Paper sx={{ height: "calc(100dvh - 48px)", flex: 1, display: "flex" }}>
             <Grid container spacing={2}>
               {streams?.map((stream, index) => (
                 <Grid
@@ -200,8 +204,7 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
                   >
                     {`Поток ${index + 1}`}
                   </Typography>
-                  {stream.url.endsWith(".mjpg") ||
-                  stream.url.endsWith(".mjpeg") ? (
+                  {stream.url.endsWith(".mjpg") || stream.url.endsWith(".mjpeg") ? (
                     <img
                       src={stream.url}
                       alt={`Stream ${index + 1}`}
@@ -240,10 +243,12 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
         open={openSettingsDialog}
         onClose={() => setOpenSettingsDialog(false)}
         onUpdateStream={handleUpdateStream}
+        dialogInput={dialogInput}
+        setDialogInput={setDialogInput}
+        dialogTypeNumber={dialogTypeNumber}
+        setDialogTypeNumber={setDialogTypeNumber}
       />
     </>
   );
 };
-
-
 export default CameraManager;
