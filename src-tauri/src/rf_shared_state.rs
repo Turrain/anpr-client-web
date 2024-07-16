@@ -1,8 +1,5 @@
 use std::{
-    env, io,
-    sync::{Arc, Mutex},
-    thread::{self, sleep},
-    time::Duration,
+    env, io, string::FromUtf8Error, sync::{Arc, Mutex}, thread::{self, sleep}, time::Duration
 };
 
 use serde::{Deserialize, Serialize};
@@ -32,6 +29,7 @@ pub struct SerialPortConfig {
     flow_control: u8,
     driver: u32,
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CameraConfig {
     url: String,
@@ -118,7 +116,7 @@ impl Camera {
         // Clone the necessary data before the closure
         let config = self.config.lock().unwrap().clone();
         let active = Arc::clone(&self.active);
-
+        let sender = self.sender.lock().unwrap().clone().expect("msg");
         thread::spawn(move || {
             if let Some(config) = config {
                 // let options = AnprOptions::default()
@@ -130,8 +128,15 @@ impl Camera {
                         img.to_str().expect("Failed to convert path to string"),
                     )),
                     104,
-                    move |results| {
-                        println!("{:?}", results);
+                    move |data| {
+                        let vec_u8: Vec<u8> = data
+                        .into_iter()           // Convert Vec<String> into an iterator
+                        .flat_map(|s| s.into_bytes()) // Convert each String into bytes and flatten the result
+                        .collect();  
+                        if sender.blocking_send(vec_u8).is_err() {
+                            eprintln!("Failed to send data");
+                           
+                        }
                     },
                     move |frame| *active.lock().unwrap(),
                 )
@@ -183,6 +188,8 @@ impl SerialPort {
         let active = self.active.clone();
         let config = self.config.lock().unwrap().clone();
         let sender = self.sender.lock().unwrap().clone().expect("msg");
+        self.set_active(true);
+        println!("Start a camera");
         if let Some(config) = config {
             thread::spawn(move || {
                 let mut port = serialport::new(config.name.clone(), config.baud_rate)
@@ -193,6 +200,8 @@ impl SerialPort {
                     .timeout(Duration::from_millis(10))
                     .open()
                     .expect("Failed to open port");
+                
+                  
                 loop {
                     let mut buffer = vec![0; 1024];
                     match port.read(buffer.as_mut_slice()) {
@@ -216,14 +225,7 @@ impl SerialPort {
             eprintln!("No configuration loaded");
         }
 
-        self.set_active(true);
     }
-
-    // pub fn test2(&self) {
-    //     self.run(|data: Vec<u8>| {
-    //         T = process_serial_data(data)
-    //     })
-    // }
 
     pub fn stop(&self) {
         self.set_active(false);
@@ -235,93 +237,108 @@ impl SerialPort {
             None
         }
     }
-    // pub fn process_serial_data(&self, data: Vec<u8>) -> Box<dyn Send + 'static>
-    // {
-    //     let config = self.config.lock().unwrap().clone();
-    //     if let Some(config) = config {
-    //         match config.driver {
-    //             DRIVER_SERIAL => {
-    //                 Box::new(SerialDriver::process_data(data.as_slice()))
-    //             },
-    //             DRIVER_SCALES => {
-    //                 let res = ScalesDriver::process_data(data.as_slice());
-    //                 if res.is_some() {
-    //                     Box::new(res.expect("msg"))
-    //                 } else {
-    //                     Box::new(())
-    //                 }
-    //             }
-    //             _ => {
-    //                 eprintln!("No configuration loaded");
-    //                 Box::new(())
-    //             }
-    //         }
-    //     } else {
-    //         eprintln!("No configuration loaded");
-    //         Box::new(())
-    //     }
-    // }
 }
-// const DRIVER_SCALES: u32 = 1;
-// const DRIVER_SERIAL: u32 = 2;
-
-// trait Driver {
-//     type Input;
-//     type Output: Send;
-
-//     const UID: u32;
-//     fn process_data(data: Self::Input) -> Self::Output;
-// }
-
-// struct ScalesDriver;
-
-// impl Driver for ScalesDriver {
-//     type Input = &'static [u8];
-//     type Output = Option<String>;
-
-//     const UID: u32 = DRIVER_SCALES;
-
-//     fn process_data(data: Self::Input) -> Self::Output {
-//         extract_numeric_data(data)
-//     }
-// }
-
-// struct SerialDriver;
-
-// impl Driver for SerialDriver {
-//     type Input = &'static [u8];
-//     type Output = String;
-
-//     const UID: u32 = DRIVER_SERIAL;
-
-//     fn process_data(data: Self::Input) -> Self::Output {
-//         String::from_utf8(data.to_vec()).expect("Invalid UTF-8")
-//     }
-// }
-
-// fn extract_numeric_data(buffer: &[u8]) -> Option<String> {
-//     if let Some(start) = buffer.iter().position(|&x| x == 0x77) {
-//         if let Some(end) = buffer.iter().skip(start).position(|&x| x == 0x0D) {
-//             let end = end + start + 1;
-//             if buffer.get(end) == Some(&0x0A) {
-//                 let pattern = &buffer[start..end + 1];
-//                 let numeric_data: String = pattern.iter().filter_map(|&c| {
-//                     if c.is_ascii_digit() {
-//                         Some(c as char)
-//                     } else {
-//                         None
-//                     }
-//                 }).collect();
-//                 return Some(numeric_data);
-//             }
-//         }
-//     }
-//     None
-// }
 
 pub struct AppState {
-    pub camera: Camera,
-    pub port: SerialPort,
+    pub camera: Arc<Camera>,
+    pub port: Arc<SerialPort>,
+    pub device_data: Marc<DeviceData>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DeviceData {
+    camera_data: Vec<Vec<u8>>,
+    port_data: Vec<Vec<u8>>,
+}
+
+impl DeviceData {
+    // Function to convert Vec<u8> to String
+    fn vec_to_string(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
+        String::from_utf8(vec)
+    }
+
+    // Function to print the camera and port data as strings
+    pub fn print_data(&self) {
+        for camera in &self.camera_data {
+            match Self::vec_to_string(camera.clone()) {
+                Ok(string) => println!("Camera Data: {}", string),
+                Err(e) => println!("Error converting camera data to string: {}", e),
+            }
+        }
+
+        for port in &self.port_data {
+            match Self::vec_to_string(port.clone()) {
+                Ok(string) => println!("Port Data: {}", string),
+                Err(e) => println!("Error converting port data to string: {}", e),
+            }
+        }
+    }
+}
+
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            camera: Arc::new(Camera::new()),
+            port: Arc::new(SerialPort::new()),
+            device_data: Arc::new(Mutex::new(DeviceData {
+                camera_data: Vec::new(),
+                port_data: Vec::new(),
+            })),
+        }
+    }
+    pub fn monitor_data(&self) {
+        let camera_receiver = Arc::clone(&self.camera.receiver);
+        let port_receiver = Arc::clone(&self.port.receiver);
+        let device_data = Arc::clone(&self.device_data);
+        let camera = self.camera.clone();
+
+        thread::spawn(move || loop {
+            let mut start_camera = false;
+
+            {
+                let mut port_lock = port_receiver.lock().unwrap();
+                if let Some(port_rx) = port_lock.as_mut() {
+                    if let Ok(data) = port_rx.try_recv() {
+                        println!("Received data from serial port: {:?}", data);
+                        let mut device_data_lock = device_data.lock().unwrap();
+                        device_data_lock.port_data.push(data.clone());
+
+                        // Example condition to start the camera
+                        if data.contains(&51) {
+                            start_camera = true;
+                        }
+                    }
+                }
+            }
+
+            if start_camera {
+                camera.run();
+            } else {
+                camera.stop();
+            }
+
+            {
+                let mut camera_lock = camera_receiver.lock().unwrap();
+                if let Some(camera_rx) = camera_lock.as_mut() {
+                    if let Ok(data) = camera_rx.try_recv() {
+                        println!("Received data from camera: {:?}", data);
+                        let mut device_data_lock = device_data.lock().unwrap();
+                        device_data_lock.camera_data.push(data);
+                    }
+                }
+            }
+            {
+                let mut device_data_lock = device_data.lock().unwrap();
+                if(device_data_lock.camera_data.len() > 0){
+                    device_data_lock.print_data();
+                }
+              
+            }
+         
+            // Sleep for a short duration to avoid busy-waiting
+            sleep(Duration::from_millis(100));
+        });
+    }
 }
 
 #[command]
@@ -340,53 +357,25 @@ pub fn stop_port(state: State<'_, AppState>) {
 }
 
 #[command]
-pub fn start_camera( state: State<'_, AppState>) {
+pub fn start_camera(state: State<'_, AppState>) {
     state.camera.run();
 }
 
 #[command]
-pub fn stop_camera(state: State<'_, AppState>)  {
+pub fn stop_camera(state: State<'_, AppState>) {
     state.camera.stop();
 }
 
 #[command]
-pub fn configure_camera(config:CameraConfig, state: State<'_, AppState>) {
+pub fn configure_camera(config: CameraConfig, state: State<'_, AppState>) {
     state.camera.set_config(config);
 }
 
-
+#[command]
+pub fn start_monitoring(state: State<'_, AppState>) {
+    state.monitor_data();
+}
 
 fn should_process_frame(frame_number: usize, desired_fps: f32) -> bool {
     frame_number as f32 % (30.0 / desired_fps) == 0.0
-}
-#[command]
-async fn main_control(state: State<'_, AppState>, window: Window) {
-    let state = state.inner().clone();
-    thread::spawn(move || {
-        tauri::async_runtime::block_on(async move {
-            loop {
-                if let Some(serial_data) = state.port.lock().unwrap().receive_callback().await {
-                    if serial_data.len() > 1000 {
-                        tauri::async_runtime::block_on(async {
-                            tauri::invoke(&window, "start_camera", ()).await.unwrap();
-                        });
-                        if let Some(camera_data) = state.camera.lock().unwrap().receive_callback().await {
-                            println!("Camera data: {:?}", camera_data);
-                            if serial_data.len() > 1000 && !camera_data.is_empty() {
-                                println!(
-                                    "Exporting data: Serial Data  = {:?}, Camera Data = {:?}",
-                                    serial_data,
-                                    camera_data
-                                );
-                            }
-                        }
-                        tauri::async_runtime::block_on(async {
-                            tauri::invoke(&window, "stop_camera", ()).await.unwrap();
-                        });
-                    }
-                }
-                sleep(Duration::from_millis(500)).await;
-            }
-        });
-    });
 }

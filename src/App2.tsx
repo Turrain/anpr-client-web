@@ -59,6 +59,10 @@ const App = () => {
     const startCommunication = async () => {
         await invoke("start_serial_communication");
     };
+    React.useEffect(() => {
+        invoke("start_monitoring");
+    }, []);
+
     return (
         <Router>
             <Box sx={{display: 'flex'}}>

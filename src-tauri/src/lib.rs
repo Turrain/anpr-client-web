@@ -192,19 +192,8 @@ pub fn run() {
    print!("TETETETE");
    
     tauri::Builder::default()
-        .manage(AppState{ camera: Camera::new(), port: SerialPort::new() })
-        .setup(|app| {
-            let handle = app.handle();
-            let state = handle.state::<AppState>().clone();
-            let window = app.get_webview_window("main").unwrap();
-            
-            // Spawn the main control function as a background task
-            tauri::async_runtime::spawn(async move {
-                main_control(state, window).await;
-            });
-
-            Ok(())
-        })
+        .manage(AppState::new())
+     
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -217,6 +206,7 @@ pub fn run() {
            start_camera, 
            stop_camera, 
            configure_camera,
+           start_monitoring,
             //--------------------
 
 
