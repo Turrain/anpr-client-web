@@ -124,9 +124,9 @@ impl Camera {
                 //     .with_vers("1.6.0");
                 let result = anpr_video(
                     Some(config.url.clone()),
-                    // Some(String::from(
-                    //     img.to_str().expect("Failed to convert path to string"),
-                    // )),
+                    Some(String::from(
+                        img.to_str().expect("Failed to convert path to string"),
+                    )),
                     104,
                     move |data| {
                         let vec_u8: Vec<u8> = data
@@ -138,7 +138,7 @@ impl Camera {
                            
                         }
                     },
-                    move |frame| *active.lock().unwrap(),
+                    *active.lock().unwrap(),
                 )
                 .map_err(|e| e.to_string());
             } else {

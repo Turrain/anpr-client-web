@@ -74,8 +74,16 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
 
   const startCameraStream = async (stream) => {
     try {
-      await invoke("configure_camera", { config: { name: `Camera ${streams.length + 1}`, url: stream.url } });
-      await invoke("start_camera");
+      const config = {
+        url: stream.url,
+        target_fps: 30,
+        car_plate_type: stream.typeNumber,
+      };
+      await invoke("set_device_config", {
+        device_type: "camera",
+        config: { CameraConfig: config },
+      });
+      await invoke("start_device", { device_type: "camera" });
       console.log(`Started camera stream: ${stream.url}`);
     } catch (error) {
       console.error(`Failed to start camera stream: ${stream.url}`, error);
@@ -84,7 +92,7 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
 
   const stopCameraStream = async (stream) => {
     try {
-      await invoke("stop_camera");
+      await invoke("stop_device", { device_type: "camera" });
       console.log(`Stopped camera stream: ${stream.url}`);
     } catch (error) {
       console.error(`Failed to stop camera stream: ${stream.url}`, error);
@@ -93,7 +101,15 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
 
   const configureCameraStream = async (stream) => {
     try {
-      await invoke("configure_camera", { config: { name: `Camera ${currentStreamIndex + 1}`, url: stream.url } });
+      const config = {
+        url: stream.url,
+        target_fps: 30,
+        car_plate_type: stream.typeNumber,
+      };
+      await invoke("set_device_config", {
+        device_type: "camera",
+        config: { CameraConfig: config },
+      });
       console.log(`Configured camera stream: ${stream.url}`);
     } catch (error) {
       console.error(`Failed to configure camera stream: ${stream.url}`, error);
@@ -105,7 +121,7 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
     return () => {
       streams.forEach(stopCameraStream);
     };
-  }, []);
+  }, [streams]);
 
   return (
     <>
