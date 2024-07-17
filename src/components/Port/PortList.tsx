@@ -16,19 +16,8 @@ import { Settings, Stop, Usb } from "@mui/icons-material";
 import { invoke } from "@tauri-apps/api/core";
 
 
-interface PortInfo {
-  port_name: string;
-  port_type: string;
-  vid?: number;
-  pid?: number;
-  serial_number?: string;
-  manufacturer?: string;
-  product?: string;
-  interface?: string;
-}
-
 interface PortListProps {
-  serialPorts: PortInfo[];
+  serialPorts: { port_name: string, port_type: string }[];
 }
 
 const PortList: React.FC<PortListProps> = ({ serialPorts }) => {
@@ -61,21 +50,23 @@ const PortList: React.FC<PortListProps> = ({ serialPorts }) => {
       flow_control: flowControl,
       driver: driver
     };
+    console.log(settings)
     try {
-      await invoke('configure_port', { config: settings });
-      await invoke('start_port');
+      await invoke('set_device_config', { deviceType: 'port', config: {SerialPortConfig: settings} });
+      await invoke('start_device', { deviceType: 'port' });
+      await invoke('monitor_device_callbacks');
       setRunningPort(portName);
     } catch (error) {
-      console.error('Failed to invoke configure_port or start_port command', error);
+      console.error('Failed to invoke set_device_config or start_device command', error);
     }
   };
 
   const stopReading = async () => {
     try {
-      await invoke('stop_port');
+      await invoke('stop_device', { deviceType: 'port' });
       setRunningPort(null);
     } catch (error) {
-      console.error('Failed to invoke stop_port command', error);
+      console.error('Failed to invoke stop_device command', error);
     }
   };
 

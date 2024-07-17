@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use rand::Rng;
+use refactor::{Device, DeviceConfig, DevicesState};
 use serde::{Deserialize, Serialize};
 use serialport::{available_ports, SerialPortType};
 use std::{
@@ -12,25 +13,26 @@ use std::{
     thread,
     time::Duration,
 };
-use tauri::{command, Manager, Window};
+use tauri::{command, Manager, State, Window};
 use tokio::sync::{oneshot, Mutex};
 use ANPR_bind::{anpr_plate, anpr_video, AnprImage, AnprOptions};
-#[macro_use] 
+#[macro_use]
 mod commands;
 mod database;
 mod models;
 mod schema;
-#[macro_use] 
+#[macro_use]
 mod port_commands;
-#[macro_use] 
+#[macro_use]
 mod camera_commands;
+mod refactor;
 mod shared_state;
+use crate::camera_commands::*;
+use crate::commands::*;
 use crate::database::*;
 use crate::models::*;
-use crate::commands::*;
 use crate::port_commands::*;
-use crate::camera_commands::*;
-#[macro_use] 
+#[macro_use]
 mod rf_shared_state;
 use crate::rf_shared_state::*;
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
@@ -58,7 +60,7 @@ fn start_serial_communication() {
             //     Ok(t) => {
             //         let received_data = &buffer[..t];
             //    //     println!("Received data: {:?}", received_data);
-                    
+
             //     }
             //     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
             //     Err(e) => eprintln!("{:?}", e),
@@ -69,18 +71,17 @@ fn start_serial_communication() {
             let random_number: u16 = rng.gen_range(1000..9999);
             let formatted_text = format!("wn{}kg\r\n", random_number);
             let text_bytes = formatted_text.as_bytes();
-            
+
             port2
                 .write_all(text_bytes)
                 .expect("Failed to write to COM2");
-               println!("Sent random data: {}", random_number);
+            println!("Sent random data: {}", random_number);
             //  window.emit("sent-data", random_data).expect("Failed to emit event");
             // Sleep for a short duration to avoid overwhelming the ports
             thread::sleep(Duration::from_millis(1500));
         }
     });
 }
-
 
 fn should_process_frame(frame_number: usize, desired_fps: f32) -> bool {
     frame_number as f32 % (30.0 / desired_fps) == 0.0
@@ -187,39 +188,88 @@ async fn start_rtsp_to_rtmp(rtsp_url: String, rtmp_url: String) -> Result<(), St
 //     rx.await.map_err(|e| e.to_string())?;
 //     Ok(())
 // }
+#[tauri::command]
+fn set_device_config(state: State<'_, DevicesState>, device_type: String, config: DeviceConfig) {
+    println!("{:?}", config);
+    match device_type.as_str() {
+        "camera" => state.camera.lock().unwrap().set_config(config),
+        "port" => state.port.lock().unwrap().set_config(config),
+        _ => panic!("Unknown device type"),
+    };
+}
+
+#[tauri::command]
+fn start_device(state: State<'_, DevicesState>, device_type: String) {
+    println!("{:?}", device_type);
+    match device_type.as_str() {
+        "camera" => {
+            let mut camera = state.camera.lock().unwrap();
+            camera.set_active(true);
+        }
+        "port" => {
+            let mut port = state.port.lock().unwrap();
+            port.set_active(true);
+            port.run();
+        }
+        _ => panic!("Unknown device type"),
+    };
+}
+
+#[tauri::command]
+fn stop_device(state: State<'_, DevicesState>, device_type: String) {
+    match device_type.as_str() {
+        "camera" => state.camera.lock().unwrap().stop(),
+        "port" => state.port.lock().unwrap().stop(),
+        _ => panic!("Unknown device type"),
+    };
+}
+
+#[tauri::command]
+fn monitor_device_callbacks(state: State<'_, DevicesState>) {
+    state.monitor_callbacks();
+}
 
 pub fn run() {
-   print!("TETETETE");
-   
+    print!("TETETETE");
+    let serial_config = DeviceConfig::SerialPortConfig(refactor::SerialPortConfig {
+        name: "COM3".to_string(),
+        baud_rate: 9600,
+        data_bits: 4u8,
+        stop_bits: 1u8,
+        parity: 0u8,
+        flow_control: 2u8,
+        driver: 1u8,
+    });
+
+    let serialized = serde_json::to_string(&serial_config).unwrap();
+    println!("{:?}", serialized);
     tauri::Builder::default()
         .manage(AppState::new())
-     
+        .manage(DevicesState::new())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
-           // process_anpr,
-           configure_port, 
-           start_port, 
-           stop_port, 
-           start_camera, 
-           stop_camera, 
-           configure_camera,
-           start_monitoring,
+            // process_anpr,
+            configure_port,
+            start_port,
+            stop_port,
+            start_camera,
+            stop_camera,
+            configure_camera,
+            start_monitoring,
             //--------------------
-
-
-
+            monitor_device_callbacks,
+            stop_device,
+            start_device,
+            set_device_config,
             start_serial_communication,
             start_rtsp_to_rtmp,
-          
-
             read_serial_port,
             stop_serial_port,
-            load_serial_port_settings, 
-            list_serial_ports, 
-            
+            load_serial_port_settings,
+            list_serial_ports,
             stop_stream,
             start_stream,
             change_stream,
@@ -240,4 +290,3 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

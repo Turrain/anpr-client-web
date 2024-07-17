@@ -21,13 +21,13 @@ pub struct SerialPortInfo {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SerialPortConfig {
-    name: String,
-    baud_rate: u32,
-    data_bits: u8,
-    stop_bits: u8,
-    parity: u8,
-    flow_control: u8,
-    driver: u32,
+    pub name: String,
+    pub baud_rate: u32,
+    pub data_bits: u8,
+    pub stop_bits: u8,
+    pub parity: u8,
+    pub flow_control: u8,
+    pub driver: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -124,9 +124,9 @@ impl Camera {
                 //     .with_vers("1.6.0");
                 let result = anpr_video(
                     Some(config.url.clone()),
-                    Some(String::from(
-                        img.to_str().expect("Failed to convert path to string"),
-                    )),
+                    // Some(String::from(
+                    //     img.to_str().expect("Failed to convert path to string"),
+                    // )),
                     104,
                     move |data| {
                         let vec_u8: Vec<u8> = data

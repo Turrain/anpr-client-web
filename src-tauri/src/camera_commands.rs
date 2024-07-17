@@ -31,7 +31,7 @@ async fn start_camera_stream(url: String, window: Window) -> Result<(), String> 
 
         let result = anpr_video(
             Some(cloned_url.clone()),
-            Some(String::from(img.to_str().expect("msg"))),
+       //     Some(String::from(img.to_str().expect("msg"))),
             104,
             move |results| {
                 window.emit("anpr-update", results.clone()).unwrap();

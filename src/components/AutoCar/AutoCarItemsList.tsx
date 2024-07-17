@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
 
 
+
 const AutoCarItemsList = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +40,6 @@ const AutoCarItemsList = () => {
     edit: item.id,
     delete: item.id,
   }));
-
   const columns: GridColDef[] = [
     { field: 'car_plate_number', headerName: 'Car Plate Number', flex: 1, minWidth: 150 },
     { field: 'photo', headerName: 'Photo', flex: 1, minWidth: 150 },
