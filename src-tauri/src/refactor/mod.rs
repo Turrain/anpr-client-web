@@ -121,22 +121,28 @@ impl Device for DeviceContainer {
         }
     }
     fn set_config(&mut self, config: DeviceConfig) -> &Self {
+        println!("Setting device configuration: {:?}", config);
         self.config = config;
         self
     }
     fn set_active(&mut self, active: bool) -> &Self {
         let mut active_lock = self.device.active.lock().unwrap();
         *active_lock = active;
+        println!("Setting device active state to: {}", active);
         self
     }
     fn trigger_callback(&self, data: Vec<u8>) {
         if let Some(ref mut cb) = *self.device.callback.lock().unwrap() {
+            println!("Triggering callback with data: {:?}", data);
             cb(data);
+        } else {
+            println!("No callback set, data: {:?}", data);
         }
     }
     fn run(&mut self) {
         match &self.config {
             DeviceConfig::SerialPortConfig(serial_config) => {
+                println!("Starting Serial Port with config: {:?}", serial_config);
                 let active = self.device.active.clone();
                 let callback = self.device.callback.clone();
 
@@ -164,7 +170,7 @@ impl Device for DeviceContainer {
                         match port.read(buffer.as_mut_slice()) {
                             Ok(bytes_read) => {
                                 let data = buffer[..bytes_read].to_vec();
-                                println!("{:?}", data);
+                                println!("Received data from serial port: {:?}", data);
                                 self_clone.trigger_callback(data);
                             }
                             Err(ref e) if e.kind() == ErrorKind::TimedOut => (),
@@ -175,13 +181,11 @@ impl Device for DeviceContainer {
                         //     callback(vec![1, 2, 3, 4]);
                         // }
                     }
+                    println!("Serial port reading loop exited.");
                 });
             }
-            DeviceConfig::CameraConfig {
-                url,
-                target_fps,
-                car_plate_type,
-            } => {
+            DeviceConfig::CameraConfig { url, target_fps, car_plate_type } => {
+                println!("Starting Camera with config: url={}, target_fps={}, car_plate_type={}", url, target_fps, car_plate_type);
                 let active = self.device.active.clone();
                 let callback = self.device.callback.clone();
                 let url = url.clone();
@@ -189,61 +193,63 @@ impl Device for DeviceContainer {
                 let car_plate_type = *car_plate_type;
                 let current_dir = env::current_dir().expect("msg");
                 let img = current_dir.join("test.jpg");
-                println!("Start a camera: {}", url.clone());
+                let self_clone = self.clone();
+                println!("WARN: Start a camera: {}", url.clone());
+                
                 thread::spawn(move || {
-                    let mut active_guard = active.lock().unwrap();
-                    
                     let mut frame_capture = match Some(url.clone()) {
                         Some(path) => AnprVideoCapture::from_file(&path).expect("Failed to open file"),
                         None => AnprVideoCapture::from_camera(0).expect("Failed to open camera"),
                     };
-
-                    let mut gray_frame = AnprImage {
-                        ptr: ptr::null_mut(),
-                    };
-
+    
                     let anpr_options = AnprOptions::default().with_type_number(104);
-
                     let full_types = [4, 7, 9, 310, 311, 911];
                     let is_full_type = anpr_options.is_full_type(&full_types);
+    
+                    let target_duration = Duration::from_secs_f64(1.0 / target_fps as f64);
                     let mut frame_number = 0;
                     loop {
-                        println!("{:?}", *active_guard);
-                        if !*active_guard { frame_number += 1; unsafe {cvGrabFrame(frame_capture.cap);} continue; }
-                        
-                        let mut frame = frame_capture.read_frame().expect("Failed to read frame");
+                        if !*active.lock().unwrap() {
+                            // Sleep or yield to avoid busy waiting
+                            thread::sleep(Duration::from_millis(100));
+                            continue;
+                        }
+    
+                        let start = Instant::now();
+                        let mut frame = match frame_capture.read_frame() {
+                            Ok(frame) => frame,
+                            Err(e) => {
+                                eprintln!("Error reading frame: {}", e);
+                                break;
+                            }
+                        };
+    
                         if frame.ptr.is_null() {
+                            eprintln!("Frame pointer is null, stopping capture");
                             break;
                         }
+    
                         if let Some(ref value) = Some(String::from(img.to_str().expect("msg"))) {
                             frame.save_image(value.as_str());
-                        } else {
-                            ()
                         }
-
-                        let start = Instant::now();
-                       
+    
                         match anpr_plate(&frame, &anpr_options) {
                             Ok(results) => {
                                 let vec_u8: Vec<u8> = results.into_iter().flat_map(|s| s.into_bytes()).collect();
-                                if let Some(ref mut callback) = *callback.lock().unwrap() {
-                                    callback(vec_u8);
-                                }
-                            },
-                            Err(e) => {
-                               // callback(vec![e]);
-                                eprintln!("{}", e);
+                                println!("ANPR results: {:?}", vec_u8);
+                                self_clone.trigger_callback(vec_u8);
                             }
-                        };
+                            Err(e) => eprintln!("ANPR Error: {}", e),
+                        }
+    
                         let duration = start.elapsed();
-
-                        println!(
-                            "time: {:.3}; ",
-                            duration.as_secs_f32(),
-                        );
+                        if duration < target_duration {
+                            thread::sleep(target_duration - duration);
+                        }
                         frame_number += 1;
+                        println!("Processed frame number: {}", frame_number);
                     }
-
+                    println!("Camera capture loop exited.");
                 });
             }
             DeviceConfig::Unset => {
@@ -272,6 +278,7 @@ pub struct DevicesState {
 
 impl DevicesState {
     pub fn new() -> Self {
+        println!("Initializing new DevicesState");
         Self {
             camera: Arc::new(Mutex::new(DeviceContainer::new())),
             port: Arc::new(Mutex::new(DeviceContainer::new())),
@@ -279,30 +286,30 @@ impl DevicesState {
     }
 
     pub fn monitor_callbacks(&self) {
-        print!("AAAAAAAAAAA");
+        println!("Monitoring callbacks for devices");
         let camera = self.camera.clone();
         let port_callback = {
             let camera = camera.clone();
-            print!("BBBBBBBBBBB");
+           
             move |data: Vec<u8>| {
                 println!("Port Data: {:?}", data);
                 if data.contains(&51) {
                     println!("START CAMERA");
                     //     Start the camera if port data size is greater than 1000
                     let active = *camera.lock().unwrap().device.active.lock().unwrap();
-                    println!("ACTIVE 1:{} ", active);
+                   // println!("ACTIVE 1:{} ", active);
                     if !active {
                         camera.lock().unwrap().set_active(true);
-                        println!("ACTIVE 2:{} ", active);
+                   //     println!("ACTIVE 2:{} ", active);
                     }
                 } else {
                     println!("STOP CAMERA");
                     // Stop the camera if port data size is less than or equal to 1000
                     let active = *camera.lock().unwrap().device.active.lock().unwrap();
-                    println!("ACTIVE 3:{} ", active);
+                  //  println!("ACTIVE 3:{} ", active);
                     if active {
                         camera.lock().unwrap().set_active(false);
-                        println!("ACTIVE 4:{} ", active);
+                 //       println!("ACTIVE 4:{} ", active);
                     }
                 }
             }
@@ -310,6 +317,7 @@ impl DevicesState {
 
         let camera_callback = |data: Vec<u8>| {
             println!("Camera Data: {:?}", data);
+            
         };
 
         self.camera

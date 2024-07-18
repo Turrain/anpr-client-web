@@ -80,10 +80,10 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
         car_plate_type: stream.typeNumber,
       };
       await invoke("set_device_config", {
-        device_type: "camera",
+        deviceType: "camera",
         config: { CameraConfig: config },
       });
-      await invoke("start_device", { device_type: "camera" });
+      await invoke("start_device", { deviceType: "camera" });
       console.log(`Started camera stream: ${stream.url}`);
     } catch (error) {
       console.error(`Failed to start camera stream: ${stream.url}`, error);
@@ -92,7 +92,7 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
 
   const stopCameraStream = async (stream) => {
     try {
-      await invoke("stop_device", { device_type: "camera" });
+      await invoke("stop_device", { deviceType: "camera" });
       console.log(`Stopped camera stream: ${stream.url}`);
     } catch (error) {
       console.error(`Failed to stop camera stream: ${stream.url}`, error);
@@ -149,7 +149,7 @@ const CameraManager = ({ streams, setStreams, handleProcess }) => {
                 <Button
                   variant="contained"
                   fullWidth
-                  onClick={() => handleProcess(stream.url)}
+                  onClick={() => startCameraStream({url: stream.url, typeNumber: 104})}
                 >
                   Process
                 </Button>

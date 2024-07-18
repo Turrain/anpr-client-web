@@ -205,6 +205,7 @@ fn start_device(state: State<'_, DevicesState>, device_type: String) {
         "camera" => {
             let mut camera = state.camera.lock().unwrap();
             camera.set_active(true);
+            camera.run();
         }
         "port" => {
             let mut port = state.port.lock().unwrap();
