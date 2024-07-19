@@ -38,7 +38,7 @@ function CustomComponent() {
       >
         <CardMedia
           component="img"
-          image="http://158.58.130.148:80/mjpg/video.mjpg"
+          image="./saved_images/live.jpg"
           sx={{ width: 440, }}
           alt="Alex Morrison"
         />

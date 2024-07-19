@@ -253,12 +253,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             // process_anpr,
-            configure_port,
-            start_port,
-            stop_port,
-            start_camera,
-            stop_camera,
-            configure_camera,
+      
             start_monitoring,
             //--------------------
             monitor_device_callbacks,
@@ -266,14 +261,10 @@ pub fn run() {
             start_device,
             set_device_config,
             start_serial_communication,
-            start_rtsp_to_rtmp,
-            read_serial_port,
-            stop_serial_port,
-            load_serial_port_settings,
+         
+         
             list_serial_ports,
-            stop_stream,
-            start_stream,
-            change_stream,
+           
             //---------------------------
             cmd_get_all_car_weights_auto,
             cmd_create_car_weights_auto,
