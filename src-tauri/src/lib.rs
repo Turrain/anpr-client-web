@@ -1,7 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use rand::Rng;
-use refactor::{Device, DeviceConfig, DevicesState};
+
+use refactorv2::{CameraConfig, DevicesState, SerialPortConfig};
 use serde::{Deserialize, Serialize};
 use serialport::{available_ports, SerialPortType};
 use std::{
@@ -21,20 +22,15 @@ mod commands;
 mod database;
 mod models;
 mod schema;
-#[macro_use]
-mod port_commands;
-#[macro_use]
-mod camera_commands;
-mod refactor;
-mod shared_state;
-use crate::camera_commands::*;
+
+mod refactorv2;
+
+
 use crate::commands::*;
 use crate::database::*;
 use crate::models::*;
-use crate::port_commands::*;
-#[macro_use]
-mod rf_shared_state;
-use crate::rf_shared_state::*;
+
+
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 
 #[tauri::command]
@@ -189,63 +185,116 @@ async fn start_rtsp_to_rtmp(rtsp_url: String, rtmp_url: String) -> Result<(), St
 //     Ok(())
 // }
 #[tauri::command]
-fn set_device_config(state: State<'_, DevicesState>, device_type: String, config: DeviceConfig) {
+fn set_camera_config(state: State<'_, DevicesState>, config: CameraConfig) {
     println!("{:?}", config);
-    match device_type.as_str() {
-        "camera" => state.camera.lock().unwrap().set_config(config),
-        "port" => state.port.lock().unwrap().set_config(config),
-        _ => panic!("Unknown device type"),
-    };
+    state.camera.lock().unwrap().set_config(config);
 }
 
 #[tauri::command]
-fn start_device(state: State<'_, DevicesState>, device_type: String) {
-    println!("{:?}", device_type);
-    match device_type.as_str() {
-        "camera" => {
-            let mut camera = state.camera.lock().unwrap();
-            camera.set_active(true);
-            camera.run();
-        }
-        "port" => {
-            let mut port = state.port.lock().unwrap();
-            port.set_active(true);
-            port.run();
-        }
-        _ => panic!("Unknown device type"),
-    };
+fn set_port_config(state: State<'_, DevicesState>, config: SerialPortConfig) {
+    println!("{:?}", config);
+    state.port.lock().unwrap().set_config(config);
 }
 
 #[tauri::command]
-fn stop_device(state: State<'_, DevicesState>, device_type: String) {
-    match device_type.as_str() {
-        "camera" => state.camera.lock().unwrap().stop(),
-        "port" => state.port.lock().unwrap().stop(),
-        _ => panic!("Unknown device type"),
-    };
+fn start_camera(state: State<'_, DevicesState>) {
+    let mut camera = state.camera.lock().unwrap();
+    camera.set_active(true);
+    camera.run();
+}
+
+#[tauri::command]
+fn start_port(state: State<'_, DevicesState>) {
+    let mut port = state.port.lock().unwrap();
+    port.set_active(true);
+    port.run();
+}
+
+#[tauri::command]
+fn stop_camera(state: State<'_, DevicesState>) {
+    state.camera.lock().unwrap().set_active(false);
+}
+
+#[tauri::command]
+fn stop_port(state: State<'_, DevicesState>) {
+    state.port.lock().unwrap().set_active(false);
 }
 
 #[tauri::command]
 fn monitor_device_callbacks(state: State<'_, DevicesState>) {
-    state.monitor_callbacks();
+    state.monitor();
+}
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub(crate) struct PortInfo {
+    port_name: String,
+    port_type: String,
+    vid: Option<u16>,
+    pid: Option<u16>,
+    serial_number: Option<String>,
+    manufacturer: Option<String>,
+    product: Option<String>,
+    interface: Option<String>,
+}
+
+#[tauri::command]
+fn list_serial_ports2() -> Result<Vec<PortInfo>, String> {
+    match serialport::available_ports() {
+        Ok(ports) => {
+            let port_info_list: Vec<PortInfo> = ports.into_iter().map(|p| {
+                match p.port_type {
+                    SerialPortType::UsbPort(ref info) => PortInfo {
+                        port_name: p.port_name.clone(),
+                        port_type: "USB".to_string(),
+                        vid: Some(info.vid),
+                        pid: Some(info.pid),
+                        serial_number: info.serial_number.clone(),
+                        manufacturer: info.manufacturer.clone(),
+                        product: info.product.clone(),
+                        interface: None,
+                    },
+                    SerialPortType::BluetoothPort => PortInfo {
+                        port_name: p.port_name,
+                        port_type: "Bluetooth".to_string(),
+                        vid: None,
+                        pid: None,
+                        serial_number: None,
+                        manufacturer: None,
+                        product: None,
+                        interface: None,
+                    },
+                    SerialPortType::PciPort => PortInfo {
+                        port_name: p.port_name,
+                        port_type: "PCI".to_string(),
+                        vid: None,
+                        pid: None,
+                        serial_number: None,
+                        manufacturer: None,
+                        product: None,
+                        interface: None,
+                    },
+                    SerialPortType::Unknown => PortInfo {
+                        port_name: p.port_name,
+                        port_type: "Unknown".to_string(),
+                        vid: None,
+                        pid: None,
+                        serial_number: None,
+                        manufacturer: None,
+                        product: None,
+                        interface: None,
+                    },
+                }
+            }).collect();
+            Ok(port_info_list)
+        }
+        Err(e) => Err(format!("Error listing serial ports: {:?}", e)),
+    }
 }
 
 pub fn run() {
     print!("TETETETE");
-    let serial_config = DeviceConfig::SerialPortConfig(refactor::SerialPortConfig {
-        name: "COM3".to_string(),
-        baud_rate: 9600,
-        data_bits: 4u8,
-        stop_bits: 1u8,
-        parity: 0u8,
-        flow_control: 2u8,
-        driver: 1u8,
-    });
-
-    let serialized = serde_json::to_string(&serial_config).unwrap();
-    println!("{:?}", serialized);
+   
     tauri::Builder::default()
-        .manage(AppState::new())
+       
         .manage(DevicesState::new())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
@@ -254,16 +303,22 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // process_anpr,
       
-            start_monitoring,
+         
             //--------------------
+            set_camera_config,
+            set_port_config,
+            start_camera,
+            start_port,
+            stop_camera,
+            stop_port,
             monitor_device_callbacks,
-            stop_device,
-            start_device,
-            set_device_config,
+            // --------------------
+            // start_serial_communication,
+            // list_serial_ports,
+
+
             start_serial_communication,
-         
-         
-            list_serial_ports,
+            list_serial_ports2,
            
             //---------------------------
             cmd_get_all_car_weights_auto,

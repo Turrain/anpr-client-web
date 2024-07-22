@@ -20,7 +20,7 @@ pub enum CarPlateType {
     Kz = 104,
 }
 
-type DataCallback = Box<dyn FnMut(Vec<u8>) + Send + Sync>;
+type DataCallback = Box<dyn FnMut(Vec<u8>, Arc<Mutex<Vec<Vec<u8>>>>) + Send + Sync>;
 #[derive(Clone)]
 pub struct DeviceBase {
     active: Arc<Mutex<bool>>,
@@ -30,6 +30,7 @@ pub struct DeviceBase {
 pub struct DeviceContainer {
     pub config: DeviceConfig,
     pub device: DeviceBase,
+    pub history: Arc<Mutex<Vec<Vec<u8>>>>,
 }
 
 pub trait IntoSerialPortConfig {
@@ -149,7 +150,7 @@ pub trait Device {
     fn stop(&mut self);
     fn set_callback<F>(&self, callback: F) -> &Self
     where
-        F: FnMut(Vec<u8>) + 'static + Send + Sync;
+        F: FnMut(Vec<u8>, Arc<Mutex<Vec<Vec<u8>>>>) + 'static + Send + Sync;
     fn trigger_callback(&self, data: Vec<u8>);
 }
 impl Device for DeviceContainer {
@@ -162,7 +163,9 @@ impl Device for DeviceContainer {
             device: DeviceBase {
                 active: Arc::new(Mutex::new(false)),
                 callback: Arc::new(Mutex::new(None)),
+               
             },
+            history: Arc::new(Mutex::new(Vec::new())),
         }
     }
     fn set_config(&mut self, config: DeviceConfig) -> &Self {
@@ -179,7 +182,8 @@ impl Device for DeviceContainer {
     fn trigger_callback(&self, data: Vec<u8>) {
         if let Some(ref mut cb) = *self.device.callback.lock().unwrap() {
             println!("Triggering callback with data: {:?}", data);
-            cb(data);
+            self.history.lock().unwrap().push(data.clone());
+            cb(data, self.history.clone());
         } else {
             println!("No callback set, data: {:?}", data);
         }
@@ -341,9 +345,10 @@ impl Device for DeviceContainer {
     }
     fn set_callback<F>(&self, callback: F) -> &Self
     where
-        F: FnMut(Vec<u8>) + 'static + Send + Sync,
+        F: FnMut(Vec<u8>, Arc<Mutex<Vec<Vec<u8>>>>) + 'static + Send + Sync,
     {
         let mut cb = self.device.callback.lock().unwrap();
+   
         *cb = Some(Box::new(callback));
         self
     }
@@ -373,7 +378,7 @@ impl DevicesState {
         let port_callback = {
             let camera = camera.clone();
 
-            move |data: Vec<u8>| {
+            move |data: Vec<u8>, history| {
                 println!("Port Data: {:?}", data);
                 if data.contains(&51) {
                     println!("START CAMERA");
@@ -397,7 +402,7 @@ impl DevicesState {
             }
         };
 
-        let camera_callback = |data: Vec<u8>| {
+        let camera_callback = |data: Vec<u8>, history| {
             println!("Camera Data: {:?}", data);
         };
 
