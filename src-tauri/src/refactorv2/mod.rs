@@ -102,6 +102,21 @@ impl Device {
     }
 }
 
+fn extract_numbers_from_code_points(code_points: Vec<u8>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let numbers: Vec<u8> = code_points.iter()
+        .filter_map(|&cp| {
+            let ch = cp as u8 as char;
+            if ch.is_digit(10) {
+                Some(ch as u8)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    Ok(numbers)
+}
+
 impl Port {
     pub fn new() -> Self {
         Self {
@@ -131,19 +146,33 @@ impl Port {
         self.base.lock().unwrap().set_callback(callback);
     }
 
+    // pub fn driver_convert(&self, data: Vec<u8>) {
+    //     let config = self.config.clone();
+    //     match config.driver {
+    //         2 => {
+
+    //         },
+    //         _ => {
+
+    //         }
+    //     }
+    // }
+ 
+
+
     pub fn run(&self) {
         let base = self.base.clone();
         let config = self.config.clone();
         let history = self.history.clone();
         thread::spawn(move || {
             let mut port = serialport::new(config.clone().name, config.clone().baud_rate)
-            .data_bits(config.clone().into_data_bits())
-            .stop_bits(config.clone().into_stop_bits())
-            .parity(config.clone().into_parity())
-            .flow_control(config.clone().into_flow_control())
-            .timeout(Duration::from_millis(100))
-            .open()
-            .expect("Failed to open port");
+                .data_bits(config.clone().into_data_bits())
+                .stop_bits(config.clone().into_stop_bits())
+                .parity(config.clone().into_parity())
+                .flow_control(config.clone().into_flow_control())
+                .timeout(Duration::from_millis(100))
+                .open()
+                .expect("Failed to open port");
             while base.lock().unwrap().active {
                 let mut buffer = vec![0; 1024];
                 match port.read(buffer.as_mut_slice()) {
@@ -152,9 +181,10 @@ impl Port {
                         println!("Received data from serial port: {:?}", data);
                         if let Some(ref mut cb) = base.lock().unwrap().callback {
                             println!("Triggering callback with data: {:?}", data);
-                            history.lock().unwrap().push(data.clone());
+                            let dt = extract_numbers_from_code_points(data.clone()).unwrap();
+                            history.lock().unwrap().push(dt.clone());
                             //  self.history.lock().unwrap().push(data.clone());
-                            cb(data);
+                            cb(dt);
                         } else {
                             println!("No callback set, data: {:?}", data);
                         }
@@ -254,9 +284,24 @@ impl Camera {
     }
 }
 
+pub struct ResultState {
+    pub weight: i32,
+    pub plate: String,
+}
+
+impl ResultState {
+    pub fn new() -> Self {
+        Self {
+            weight: 0,
+            plate: String::new(),
+        }
+    }
+}
 pub struct DevicesState {
     pub camera: Arc<Mutex<Camera>>,
     pub port: Arc<Mutex<Port>>,
+    pub weights_vec: Arc<Mutex<Vec<i32>>>,
+    pub results: Arc<Mutex<ResultState>>,
 }
 
 impl DevicesState {
@@ -265,29 +310,52 @@ impl DevicesState {
         Self {
             camera: Arc::new(Mutex::new(Camera::new())),
             port: Arc::new(Mutex::new(Port::new())),
+            weights_vec: Arc::new(Mutex::new(vec![])),
+            results: Arc::new(Mutex::new(ResultState::new())),
         }
     }
-
+   
     pub fn monitor(&self) {
         println!("Starting monitor thread");
         let camera = self.camera.clone();
         let port = self.port.clone();
-
+        let weights_vec = self.weights_vec.clone();
+        let mut results = self.results.clone();
         let port_callback = move |data: Vec<u8>| {
             let pb = port.lock().unwrap();
 
             let mut history = pb.history.lock().unwrap();
-            println!("Port history: {:?}", history);
-
-            let tolerance = 500; // Allowable differences
-            let threshold = 25; // Minimum number of consecutive packets to trigger camera activation
+            let tolerance = 1000; // Allowable differences
+            let threshold = 4; // Minimum number of consecutive packets to trigger camera activation
+          
+            
             if history.len() >= threshold {
-                find_most_frequent_with_tolerance(
-                    vec_vec_u8_to_vec_i32(history.clone()),
+                let values = vec_vec_u8_to_vec_i32(history.clone());
+                match determine_trend(&values, 30) {
+                    Trend::Increasing => {
+                        camera.lock().unwrap().set_active(true);
+                        println!("Trend is increasing");
+                    },
+                    Trend::Decreasing => {
+                        camera.lock().unwrap().set_active(false);
+                        println!("Trend is decreasing");
+                    },
+                    Trend::Uncertain => {
+                        println!("Trend is uncertain");
+                    },
+                }
+
+                if let Some(data) = find_most_frequent_with_tolerance(
+                    values.clone(),
                     tolerance,
-                );
+                ) {
+                    println!("Most frequent value: {}", data);
+                    weights_vec.lock().unwrap().push(data);
+                }
+
                 history.clear();
             }
+          
         };
         self.port
             .lock()
@@ -296,10 +364,8 @@ impl DevicesState {
     }
 }
 
-
 fn find_most_frequent_with_tolerance(numbers: Vec<i32>, tolerance: i32) -> Option<i32> {
     let mut frequency: HashMap<i32, usize> = HashMap::new();
-
     for &number in &numbers {
         let mut found = false;
         for &key in frequency.keys() {
@@ -328,6 +394,7 @@ fn find_most_frequent_with_tolerance(numbers: Vec<i32>, tolerance: i32) -> Optio
         None
     }
 }
+
 fn vec_vec_u8_to_vec_i32(vec: Vec<Vec<u8>>) -> Vec<i32> {
     let mut result = Vec::new();
 
@@ -340,4 +407,35 @@ fn vec_vec_u8_to_vec_i32(vec: Vec<Vec<u8>>) -> Vec<i32> {
     }
 
     result
+}
+enum Trend {
+    Increasing,
+    Decreasing,
+    Uncertain,
+}
+fn determine_trend(values: &Vec<i32>, margin_of_error: usize) -> Trend {
+    let mut increasing_count = 0;
+    let mut decreasing_count = 0;
+
+    for window in values.windows(2) {
+        if let [a, b] = window {
+            if b > a {
+                increasing_count += 1;
+            } else if b < a {
+                decreasing_count += 1;
+            }
+        }
+    }
+
+    let total_changes = increasing_count + decreasing_count;
+
+    if (increasing_count as f64 / total_changes as f64 - 0.5).abs() < margin_of_error as f64 / 100.0 {
+        return Trend::Uncertain;
+    }
+
+    if increasing_count > decreasing_count {
+        Trend::Increasing
+    } else {
+        Trend::Decreasing
+    }
 }

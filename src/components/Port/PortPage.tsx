@@ -17,7 +17,7 @@ const PortPage = ({
 
   useEffect(() => {
     
-    invoke("list_serial_ports")
+    invoke("list_serial_ports2")
       .then((ports) => {console.log(ports); setSerialPorts(ports)})
       .catch(console.error);
   

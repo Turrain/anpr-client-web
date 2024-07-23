@@ -33,6 +33,52 @@ use crate::models::*;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 
+struct ValueGenerator {
+    peak: i32,
+    step: i32,
+    direction: i32,
+    value: i32,
+    peak_duration: i32,
+    peak_counter: i32,
+}
+
+impl ValueGenerator {
+    fn new() -> Self {
+        Self {
+            peak: 10_000,
+            step: 1_000,
+            direction: 1,
+            value: 0,
+            peak_duration: 5,
+            peak_counter: 0,
+        }
+    }
+}
+
+impl Iterator for ValueGenerator {
+    type Item = i32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.value >= self.peak {
+            if self.peak_counter < self.peak_duration {
+                self.peak_counter += 1;
+                let rand_value = self.value + rand::thread_rng().gen_range(0..self.step);
+                return Some(rand_value);
+            } else {
+                self.direction = -1;
+                self.peak_counter = 0;
+            }
+        } else if self.value <= 0 {
+            self.direction = 1;
+        }
+
+        self.value += self.direction * self.step;
+        let rand_value = self.value + rand::thread_rng().gen_range(0..self.step);
+        Some(rand_value)
+    }
+}
+
+
 #[tauri::command]
 fn start_serial_communication() {
     thread::spawn(move || {
@@ -46,8 +92,8 @@ fn start_serial_communication() {
             .open()
             .unwrap();
 
-        let mut rng = rand::thread_rng();
-
+    
+        let mut generator = ValueGenerator::new();
         loop {
             // Listen for data on COM1
             // let mut buffer: Vec<u8> = vec![0; 1024];
@@ -63,8 +109,8 @@ fn start_serial_communication() {
             // }
 
             // Generate and send random data to COM2
-            let random_data: u8 = rng.gen();
-            let random_number: u16 = rng.gen_range(1000..9999);
+         
+            let random_number =  generator.next().unwrap();
             let formatted_text = format!("wn{}kg\r\n", random_number);
             let text_bytes = formatted_text.as_bytes();
 
