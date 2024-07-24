@@ -267,8 +267,8 @@ fn stop_port(state: State<'_, DevicesState>) {
 }
 
 #[tauri::command]
-fn monitor_device_callbacks(state: State<'_, DevicesState>) {
-    state.monitor();
+fn monitor_device_callbacks(state: State<'_, DevicesState>, window: Window) {
+    state.monitor(&window);
 }
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct PortInfo {

@@ -7,6 +7,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
+use tauri::{Manager, Window};
 use ANPR_bind::{anpr_plate, AnprOptions, AnprVideoCapture};
 pub trait IntoSerialPortConfig {
     fn into_data_bits(self) -> serialport::DataBits;
@@ -283,7 +284,7 @@ impl Camera {
         });
     }
 }
-
+#[derive(Clone, Debug)]
 pub struct ResultState {
     pub weight: i32,
     pub plate: String,
@@ -315,32 +316,38 @@ impl DevicesState {
         }
     }
    
-    pub fn monitor(&self) {
+    pub fn monitor(&self, window: &Window) {
         println!("Starting monitor thread");
         let camera = self.camera.clone();
         let port = self.port.clone();
         let weights_vec = self.weights_vec.clone();
         let mut results = self.results.clone();
+        let window = window.clone();
         let port_callback = move |data: Vec<u8>| {
             let pb = port.lock().unwrap();
-
+           
             let mut history = pb.history.lock().unwrap();
             let tolerance = 1000; // Allowable differences
             let threshold = 4; // Minimum number of consecutive packets to trigger camera activation
-          
+            window.emit("data", vec_u8_to_i32(data)).unwrap();
             
             if history.len() >= threshold {
                 let values = vec_vec_u8_to_vec_i32(history.clone());
                 match determine_trend(&values, 30) {
                     Trend::Increasing => {
                         camera.lock().unwrap().set_active(true);
+                        window.emit("eventX", 2).unwrap();
                         println!("Trend is increasing");
                     },
                     Trend::Decreasing => {
                         camera.lock().unwrap().set_active(false);
+                        results.lock().unwrap().weight = weights_vec.lock().unwrap().iter().max().unwrap().to_owned();
+                        window.emit("eventX", -1).unwrap();
+                        println!("Results: {:?}", results.lock().unwrap());
                         println!("Trend is decreasing");
                     },
                     Trend::Uncertain => {
+                        window.emit("eventX", 1).unwrap();
                         println!("Trend is uncertain");
                     },
                 }
@@ -408,6 +415,19 @@ fn vec_vec_u8_to_vec_i32(vec: Vec<Vec<u8>>) -> Vec<i32> {
 
     result
 }
+
+fn vec_u8_to_i32(vec: Vec<u8>) -> i32 {
+    if let Ok(string) = String::from_utf8(vec) {
+        if let Ok(number) = string.parse::<i32>() {
+            number
+        } else {
+            0
+        }
+    } else {
+        0
+    }
+}
+
 enum Trend {
     Increasing,
     Decreasing,
