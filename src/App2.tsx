@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Link, useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
@@ -35,8 +35,10 @@ import {
   isPermissionGranted,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
-import CameraManager from "./components/Camera/CameraPage";
+
 import PortList from "./PortPageV2";
+import CameraManager from "./CameraPageV2";
+
 
 const drawerWidth = 240;
 const App = () => {
@@ -59,12 +61,13 @@ const App = () => {
   const startCommunication = async () => {
     await invoke("start_serial_communication");
   };
-  React.useEffect(() => {
-    invoke("start_monitoring");
-  }, []);
+  // React.useEffect(() => {
+  //   invoke("start_monitoring");
+  // }, []);
 
+  const navigate = useNavigate();
   return (
-    <Router>
+
       <Box sx={{ display: "flex" }}>
         {/* <AppBar
                     position="fixed"
@@ -79,16 +82,17 @@ const App = () => {
                         <Button color="inherit" component={Link} to="/create">Create</Button>
                     </Toolbar>
                 </AppBar> */}
-        <Sheet  sx={{ p: 2, height: "100vh" }}>
-          <Stack sx={{ gap: 1 }}>
-            <List  size="sm"
+        <Sheet  sx={{ p: 2, height: "100vh",  }} variant="soft">
+          
+            <List  size="md"
           sx={{
+            width: "200px",
             gap: 1,
             '--List-nestedInsetStart': '30px',
             '--ListItem-radius': (theme) => theme.vars.radius.sm,
           }}>
               <ListItem>
-                <ListItemButton  >
+                <ListItemButton onClick={() => navigate("/auto")} variant={window.location.pathname === "/auto" ? "solid" : ""}   color="primary">
                   <ListItemDecorator>
                     <Inbox />
                   </ListItemDecorator>
@@ -96,7 +100,7 @@ const App = () => {
                 </ListItemButton>
               </ListItem>
               <ListItem>
-                <ListItemButton  >
+                <ListItemButton onClick={() => navigate("/manual")}  variant={window.location.pathname === "/manual" ? "solid" : ""}   color="primary">
                   <ListItemDecorator>
                     <Mail />
                   </ListItemDecorator>
@@ -104,7 +108,7 @@ const App = () => {
                 </ListItemButton>
               </ListItem>
               <ListItem>
-                <ListItemButton  >
+                <ListItemButton onClick={() => navigate("/counterparty")} variant={window.location.pathname === "/counterparty" ? "solid" : ""}  color="primary">
                   <ListItemDecorator>
                     <Mail />
                   </ListItemDecorator>
@@ -112,7 +116,7 @@ const App = () => {
                 </ListItemButton>
               </ListItem>
               <ListItem>
-                <ListItemButton  >
+                <ListItemButton onClick={() => navigate("/ports")} variant={window.location.pathname === "/ports" ? "solid" : ""}   color="primary">
                   <ListItemDecorator>
                     <Inbox />
                   </ListItemDecorator>
@@ -120,7 +124,7 @@ const App = () => {
                 </ListItemButton>
               </ListItem>
               <ListItem>
-                <ListItemButton  >
+                <ListItemButton  onClick={() => navigate("/cameras")} variant={window.location.pathname === "/cameras" ? "solid" : ""}  color="primary">
                   <ListItemDecorator>
                     <Inbox />
                   </ListItemDecorator>
@@ -130,19 +134,17 @@ const App = () => {
             </List>
             <Button onClick={sendNotification1}>Send Notification</Button>
             <Button onClick={startCommunication}>Start Communication</Button>
-          </Stack>
+        
         </Sheet>
         <Box sx={{ width: "100%" }}>
           <Box mt={0}>
             <Routes>
-              <Route path="/" element={<PortList />} />
+              <Route path="/ports" element={<PortList />} />
               <Route
                 path="/cameras"
                 element={
                   <CameraManager
-                    streams={streams}
-                    setStreams={setStreams}
-                    handleProcess={undefined}
+                  
                   />
                 }
               />
@@ -170,7 +172,7 @@ const App = () => {
           </Box>
         </Box>
       </Box>
-    </Router>
+
   );
 };
 

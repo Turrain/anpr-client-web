@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Typography, CircularProgress, IconButton, Box } from '@mui/material';
 import { DataGrid, GridColDef, GridRowsProp } from '@mui/x-data-grid';
-import { Delete, Edit } from '@mui/icons-material';
+import { Add, Delete, Edit } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
+import { Button } from '@mui/joy';
 
 const CounterpartyItemsList = () => {
   const [items, setItems] = useState([]);
@@ -70,11 +71,21 @@ const CounterpartyItemsList = () => {
   ];
 
   return (
-    <Box sx={{width: 'auto',overflow: 'auto'}} className='custom-scrollbar'>
-         <Typography variant="h6" letterSpacing={1} gutterBottom>КОНТРАГЕНТЫ</Typography>
-      <div style={{ height: 'calc(100vh - 200px)', width: '100%' }}>
+    <Box sx={{width: 'auto',overflow: 'auto', p:2}} className='custom-scrollbar'>
+         {/* <Typography variant="h6" letterSpacing={1} gutterBottom>КОНТРАГЕНТЫ</Typography> */}
+      <div style={{ height: '90dvh', width: '100%' }}>
         <DataGrid rows={rows} columns={columns} />
       </div>
+      <Box position="fixed" bottom={16} right={16}>
+              <Button
+                variant="outlined"
+                onClick={() => setOpenDialog(true)}
+                sx={{ boxShadow: 5, bgcolor: "background.paper" }}
+              >
+                <Add />
+                Добавить поток
+              </Button>
+            </Box>
     </Box>
   );
 }

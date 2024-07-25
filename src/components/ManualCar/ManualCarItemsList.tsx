@@ -166,7 +166,9 @@ const ItemsList = () => {
       <Alert variant="filled" sx={{ my: 2 }} severity="error">
         Не обнаружен номер
       </Alert>
-      <DataGrid autoHeight rows={rows} columns={columns} />
+      <div style={{ height: 'auto', width: '100%' }}>
+        <DataGrid rows={rows} columns={columns} />
+      </div>
     </Box>
   );
 };

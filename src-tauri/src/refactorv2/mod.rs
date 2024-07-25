@@ -219,6 +219,9 @@ impl Camera {
         self.base.lock().unwrap().set_active(active);
     }
 
+    pub fn get_active(&self) -> bool {
+        self.base.lock().unwrap().active
+    }
     pub fn set_callback(&mut self, callback: Box<dyn FnMut(Vec<u8>) + Send + Sync>) {
         self.base.lock().unwrap().set_callback(callback);
     }
@@ -275,8 +278,8 @@ impl Camera {
                         }
                     }
                     false => {
-                        println!("Camera capture loop exited.");
-                        break;
+                        println!("Camera dont active.");
+                   //     break;
                     }
                 };
             }
@@ -335,7 +338,10 @@ impl DevicesState {
                 let values = vec_vec_u8_to_vec_i32(history.clone());
                 match determine_trend(&values, 30) {
                     Trend::Increasing => {
-                        camera.lock().unwrap().set_active(true);
+                        if camera.lock().unwrap().get_active() == false {
+                            camera.lock().unwrap().set_active(true);
+                        }
+                   
                         window.emit("eventX", 2).unwrap();
                         println!("Trend is increasing");
                     },

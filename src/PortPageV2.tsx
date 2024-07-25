@@ -1,5 +1,10 @@
 import React, { useState, useEffect, ChangeEvent } from "react";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionGroup,
+  AccordionSummary,
+  Avatar,
   Box,
   Button,
   Card,
@@ -9,14 +14,27 @@ import {
   FormLabel,
   IconButton,
   Input,
+  ListItemContent,
   Modal,
   ModalDialog,
+  Sheet,
   Stack,
+  Switch,
   TextField,
   Typography,
+  accordionDetailsClasses,
+  accordionSummaryClasses,
 } from "@mui/joy";
 
-import { Settings, Stop, Usb } from "@mui/icons-material";
+import {
+  AirplanemodeActiveRounded,
+  BluetoothRounded,
+  Settings,
+  Stop,
+  TapAndPlayRounded,
+  Usb,
+  WifiRounded,
+} from "@mui/icons-material";
 import { invoke } from "@tauri-apps/api/core";
 
 interface PortSettingsDialogProps {
@@ -39,9 +57,7 @@ const PortSettingsDialog: React.FC<PortSettingsDialogProps> = ({
   onClose,
   portName,
 }) => {
-  const [settings, setSettings] = useState<Settings>({
-  
-  });
+  const [settings, setSettings] = useState<Settings>({});
 
   useEffect(() => {
     const savedSettings = JSON.parse(
@@ -59,38 +75,40 @@ const PortSettingsDialog: React.FC<PortSettingsDialogProps> = ({
     localStorage.setItem(portName, JSON.stringify(settings));
     onClose();
   };
-  
+
   return (
     <Modal open={open} onClose={onClose}>
-        <ModalDialog>
-
-       
-      <Box sx={{ p: 2, width: 300 }}>
-       
-      
-        <Stack gap={2} sx={{ mt: 2 }}>
-          {Object.keys(settings).map((key) => (
-            <FormControl  key={key}>
-            <FormLabel>{key.charAt(0).toUpperCase() + key.slice(1)}</FormLabel>
-            <Input
-               name={key}
-               value={settings[key]}
-               onChange={handleChange}
-               fullWidth
-            />
-          </FormControl>
-          
-          ))}
-        </Stack>
-        <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mt: 2 }}>
-          <Button onClick={onClose} color="neutral">
-            Cancel
-          </Button>
-          <Button onClick={saveSettings} color="primary">
-            Save
-          </Button>
-        </Stack>
-      </Box>
+      <ModalDialog>
+        <Box sx={{ p: 2, width: 300 }}>
+          <Stack gap={2} sx={{ mt: 2 }}>
+            {Object.keys(settings).map((key) => (
+              <FormControl key={key}>
+                <FormLabel>
+                  {key.charAt(0).toUpperCase() + key.slice(1)}
+                </FormLabel>
+                <Input
+                  name={key}
+                  value={settings[key]}
+                  onChange={handleChange}
+                  fullWidth
+                />
+              </FormControl>
+            ))}
+          </Stack>
+          <Stack
+            direction="row"
+            justifyContent="flex-end"
+            gap={1}
+            sx={{ mt: 2 }}
+          >
+            <Button onClick={onClose} color="neutral">
+              Cancel
+            </Button>
+            <Button onClick={saveSettings} color="primary">
+              Save
+            </Button>
+          </Stack>
+        </Box>
       </ModalDialog>
     </Modal>
   );
@@ -143,57 +161,120 @@ const PortListItem: React.FC<PortListItemProps> = ({
     </Stack>
   </Stack>
 );
-import { Chart } from 'react-charts';
+import { Chart } from "react-charts";
 import { listen } from "@tauri-apps/api/event";
 
+const LineChart = ({ data, markers }) => {
+  const primaryAxis = React.useMemo(
+    () => ({
+      getValue: (datum) => datum.primary,
+      scaleType: "time", // Explicitly set the scale type
+    }),
+    []
+  );
 
-const LineChart = ({ data, markers  }) => {
-    const primaryAxis = React.useMemo(
-      () => ({
-        getValue: datum => datum.primary,
-        scaleType: 'time', // Explicitly set the scale type
-      }),
-      []
-    );
-  
-    const secondaryAxes = React.useMemo(
-      () => [
-        {
-          getValue: datum => datum.secondary,
-          scaleType: 'linear', // Explicitly set the scale type
-        },
-      ],
-      []
-    );
-  
-    return (
-      <Box
-        sx={{
-            p:'2.5%',
-          width: '95%',
-          height: '400px',
+  const secondaryAxes = React.useMemo(
+    () => [
+      {
+        getValue: (datum) => datum.secondary,
+        scaleType: "linear", // Explicitly set the scale type
+      },
+    ],
+    []
+  );
+
+  return (
+    <Box
+      sx={{
+        p: "2.5%",
+        width: "100%",
+        height: "400px",
+      }}
+    >
+      <Chart
+        options={{
+          data: [
+            ...data,
+            {
+              label: "Markers",
+              data: markers.map((marker) => ({
+                primary: marker.primary,
+                secondary: marker.secondary,
+              })),
+            },
+          ],
+          primaryAxis,
+          secondaryAxes,
         }}
-      >
-        <Chart
-              options={{
-                
-                data: [
-                  ...data,
-                  {
-                    label: 'Markers',
-                    data: markers.map((marker) => ({
-                      primary: marker.primary,
-                      secondary: marker.secondary,
-                    })),
-                  },
-                ],
-                primaryAxis,
-                secondaryAxes,
-              }}
-        />
-      </Box>
-    );
+      />
+    </Box>
+  );
+};
+const PortSettingsAccordion: React.FC<{ portName: string }> = ({ portName }) => {
+  const [settings, setSettings] = useState<Partial<Settings>>({});
+
+  useEffect(() => {
+    const savedSettings = JSON.parse(
+      localStorage.getItem(portName) || "{}"
+    ) as Partial<Settings>;
+    setSettings((prev) => ({ ...prev, ...savedSettings }));
+  }, [portName]);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setSettings((prev) => ({ ...prev, [name]: parseInt(value) }));
   };
+
+  const saveSettings = () => {
+    localStorage.setItem(portName, JSON.stringify(settings));
+  };
+
+  return (
+    <AccordionGroup>
+    <Accordion>
+      <AccordionSummary>
+        <Avatar color="primary">
+          <Settings />
+        </Avatar>
+        <ListItemContent>
+          <Typography level="title-md">Settings</Typography>
+          <Typography level="body-sm">
+            Configure the serial port settings
+          </Typography>
+        </ListItemContent>
+      </AccordionSummary>
+      <AccordionDetails>
+        <Stack gap={0.2} sx={{ mt: 2 }}>
+          {Object.keys(settings).map((key) => (
+            <FormControl key={key} orientation="horizontal">
+              <FormLabel sx={{flexBasis: '50%'}}>
+                {key.charAt(0).toUpperCase() + key.slice(1)}
+              </FormLabel>
+              <Input
+              size="sm"
+                name={key}
+                value={settings[key]}
+                onChange={handleChange}
+                fullWidth
+              />
+            </FormControl>
+          ))}
+        </Stack>
+        <Stack
+          direction="row"
+          justifyContent="flex-end"
+          gap={1}
+          sx={{ mt: 2 }}
+        >
+          {/* <Button onClick={saveSettings} color="primary">
+            Save
+          </Button> */}
+        </Stack>
+      </AccordionDetails>
+    </Accordion>
+    </AccordionGroup>
+  );
+};
 
 
 interface SerialPort {
@@ -201,55 +282,46 @@ interface SerialPort {
   port_type: string;
 }
 
-
-
 const PortList = () => {
   const [serialPorts, setSerialPorts] = useState([]);
-  const [portName, setPortName] = useState("");
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+
   const [runningPort, setRunningPort] = useState(null);
 
-
+ 
   const [data, setData] = useState([
     {
-      label: 'Series 1',
+      label: "Series 1",
       data: [],
     },
   ]);
 
   const [markers, setMarkers] = useState([]);
 
-
   useEffect(() => {
-    const unlistenData = listen('data', (event) => {
-        console.log('Data:', event.payload); // it's an integer
-        setData(prevData => {
-          const newData = [...prevData];
-          newData[0].data = [
-            ...newData[0].data,
-            { primary: new Date(), secondary: event.payload },
-          ];
-          return newData;
-        });
+    const unlistenData = listen("data", (event) => {
+      console.log("Data:", event.payload); // it's an integer
+      setData((prevData) => {
+        const newData = [...prevData];
+        newData[0].data = [
+          ...newData[0].data,
+          { primary: new Date(), secondary: event.payload },
+        ];
+        return newData;
       });
-   const unlistenXEvent = listen('eventX', (event) => {
-      console.log('Event X:', event.payload); // it's a timestamp or other relevant data
-      setMarkers(prevMarkers => [
+    });
+    const unlistenXEvent = listen("eventX", (event) => {
+      console.log("Event X:", event.payload); // it's a timestamp or other relevant data
+      setMarkers((prevMarkers) => [
         ...prevMarkers,
-        { primary: new Date(), secondary: event.payload*1000 },
+        { primary: new Date(), secondary: event.payload * 1000 },
       ]);
     });
 
     return () => {
-        unlistenData.then((unlisten) => unlisten());
-        unlistenXEvent.then((unlisten) => unlisten());
- 
+      unlistenData.then((unlisten) => unlisten());
+      unlistenXEvent.then((unlisten) => unlisten());
     };
   }, []);
-
-
-
-
 
   useEffect(() => {
     const fetchSerialPorts = async () => {
@@ -264,16 +336,7 @@ const PortList = () => {
     fetchSerialPorts();
   }, []);
 
-  const openSettingsDialog = (portName) => {
-    setPortName(portName);
-    setSettingsDialogOpen(true);
-  };
-
-  const closeSettingsDialog = () => {
-    setSettingsDialogOpen(false);
-  };
-
-  const startReading = async () => {
+  const startReading = async (portName) => {
     const settings = JSON.parse(localStorage.getItem(portName) || "{}");
     try {
       await invoke("set_port_config", { config: settings });
@@ -296,56 +359,50 @@ const PortList = () => {
 
   return (
     <>
-      <Box
-        sx={{
-          p: 2,
-          width: "100%",
+    <Stack sx={{height: "100dvh"}}>
+    <Box
+      sx={{
+        flexBasis: '50%',
+        
+        p: 2,
+        width: "100%",
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
+        gap: 2,
+      }}
+    >
+      {serialPorts?.map((port, index) => (
+        <Card key={index} variant="soft">
+          <CardContent>
+            <Typography level="h2">{port.port_name}</Typography>
+            <Typography level="title-lg">{port.port_type}</Typography>
+          </CardContent>
+          <PortSettingsAccordion portName={port.port_name} />
+          {runningPort === port.port_name ? (
+            <Button variant="solid" size="sm" onClick={stopReading}>
+              Остановить
+            </Button>
+          ) : (
+            <Button
+              variant="solid"
+              size="sm"
+              onClick={() => startReading(port.port_name)}
+              disabled={runningPort !== null}
+            >
+              Запустить
+            </Button>
+          )}
+        </Card>
+      ))}
+       
+    </Box>
 
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
-          gap: 2,
-        }}
-      >
-        {serialPorts?.map((port, index) => (
-          <Card variant="soft">
-            <CardContent>
-              <Typography level="title-md">{port.port_name}</Typography>
-              <Typography>{port.port_type}</Typography>
-            </CardContent>
-            <CardActions>
-              <Button
-                variant="soft"
-                size="sm"
-                onClick={() => openSettingsDialog(port.port_name)}
-              >
-                Настройки
-              </Button>
-
-              {runningPort === port.port_name ? (
-                <Button variant="solid" size="sm" onClick={stopReading}>
-                  Остановить
-                </Button>
-              ) : (
-                <Button
-                  variant="solid"
-                  size="sm"
-                  onClick={startReading}
-                  disabled={runningPort !== null}
-                >
-                  Запустить
-                </Button>
-              )}
-            </CardActions>
-          </Card>
-        ))}
-      </Box>
-      {data && <LineChart data={data} markers={markers} />}
-       <PortSettingsDialog
-          open={settingsDialogOpen}
-          onClose={closeSettingsDialog}
-          portName={portName}
-        />
-    
+    <Sheet sx={{     flexBasis: '50%',}} variant="soft">
+    {data && <LineChart data={data} markers={markers} />}
+    </Sheet>
+    </Stack>
+   
+  
     </>
   );
 };

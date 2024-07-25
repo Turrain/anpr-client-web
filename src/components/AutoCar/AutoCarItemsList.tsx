@@ -73,9 +73,9 @@ const AutoCarItemsList = () => {
   ];
 
   return (
-    <Box sx={{width: 'auto',overflow: 'auto'}} className='custom-scrollbar'>
-          <Typography variant="h6" letterSpacing={1} gutterBottom>ВЗВЕШИВАНИЯ</Typography>
-      <div style={{ height: 'calc(100vh - 200px)', width: '100%' }}>
+    <Box sx={{width: 'auto',overflow: 'auto', p:2}} className='custom-scrollbar'>
+         
+          <div style={{ height: '90dvh', width: '100%' }}>
         <DataGrid rows={rows} columns={columns} />
       </div>
     </Box>
