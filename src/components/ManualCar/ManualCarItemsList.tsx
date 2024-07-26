@@ -1,62 +1,56 @@
 import React, { useEffect, useState } from "react";
-import {
-  Container,
-  Typography,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
-  CircularProgress,
-  Box,
-  Alert,
-} from "@mui/material";
+
 import { Delete, Edit } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import { invoke } from '@tauri-apps/api/core';
 import { DataGrid, GridColDef, GridRowsProp } from "@mui/x-data-grid";
-
-import {  Card, CardContent, Button, CardMedia, useTheme } from '@mui/material';
+import { Alert, AspectRatio, Box, Card, CardContent, Chip, CircularProgress, IconButton, Typography } from "@mui/joy";
 
 function CustomComponent() {
-  const theme = useTheme();
+
 
   return (
-    <Box
+
+    <Card
+      variant="soft"
+      orientation="horizontal"
       sx={{
         width: '100%',
-        position: 'relative',
-        overflow: { xs: 'auto', sm: 'initial' },
       }}
     >
-      
-      <Card
-       
-        sx={{
-          display: 'flex',
-        }}
-      >
-        <CardMedia
-          component="img"
-          image="./saved_images/live.jpg"
-          sx={{ width: 440, }}
-          alt="Alex Morrison"
+      <AspectRatio ratio="16/9" sx={{ width: 460 }}>
+        <img
+          src="https://images.unsplash.com/photo-1507833423370-a126b89d394b?auto=format&fit=crop&w=90"
+          srcSet="https://images.unsplash.com/photo-1507833423370-a126b89d394b?auto=format&fit=crop&w=90&dpr=2 2x"
+          loading="lazy"
+          alt=""
         />
-        <CardContent >
-          <Typography variant="h6" component="div" fontWeight="light">
-            Камера 1
-          </Typography>
-          <hr/>
-          <Typography variant="h6" component="div" fontWeight="light">
-            Последний распознанный номер: *** ***
-          </Typography>
-          <Typography variant="h6" fontWeight="light" component="div">
-            Последняя оценка веса: *****
-          </Typography>
-         
-        </CardContent>
-      </Card>
-    </Box>
+      </AspectRatio>
+      <CardContent>
+        <Typography level="title-lg" id="card-description">
+          Yosemite Park
+        </Typography>
+        <Typography level="body-sm" aria-describedby="card-description" mb={1}>
+          <Link
+            overlay
+            underline="none"
+            href="#interactive-card"
+            sx={{ color: 'text.tertiary' }}
+          >
+            California, USA
+          </Link>
+        </Typography>
+        <Chip
+          variant="outlined"
+          color="primary"
+          size="sm"
+          sx={{ pointerEvents: 'none' }}
+        >
+          Cool weather all day long
+        </Chip>
+      </CardContent>
+    </Card>
+
   );
 }
 
@@ -159,13 +153,9 @@ const ItemsList = () => {
   return (
     <Box sx={{ width: "auto", overflow: "auto" }} className="custom-scrollbar">
     
-      <Typography variant="h6" letterSpacing={1} gutterBottom>
-        ВЕСОВАЯ
-      </Typography>
+  
       <CustomComponent/>
-      <Alert variant="filled" sx={{ my: 2 }} severity="error">
-        Не обнаружен номер
-      </Alert>
+
       <div style={{ height: 'auto', width: '100%' }}>
         <DataGrid rows={rows} columns={columns} />
       </div>

@@ -77,14 +77,11 @@ const CounterpartyItemsList = () => {
         <DataGrid rows={rows} columns={columns} />
       </div>
       <Box position="fixed" bottom={16} right={16}>
-              <Button
-                variant="outlined"
-                onClick={() => setOpenDialog(true)}
-                sx={{ boxShadow: 5, bgcolor: "background.paper" }}
-              >
-                <Add />
-                Добавить поток
-              </Button>
+        <Link to="/create-counterparty">
+          <Button startDecorator={<Add />}>Add Counterparty</Button>
+        </Link>
+
+             
             </Box>
     </Box>
   );

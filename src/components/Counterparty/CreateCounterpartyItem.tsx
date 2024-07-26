@@ -14,10 +14,10 @@ const CreateCounterpartyItem = () => {
   const handleSubmit = (event) => {
     event.preventDefault();
     invoke('cmd_create_counterparty', {
-      formal_name: formalName,
-      formal_address: formalAddress,
+       formalName,
+      formalAddress,
       bin,
-      full_name: fullName,
+       fullName,
     })
       .then(() => navigate('/counterparty'))
       .catch(error => console.error('There was an error creating the item!', error));

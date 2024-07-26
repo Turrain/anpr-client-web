@@ -356,10 +356,13 @@ const PortList = () => {
       console.error("Failed to stop port", error);
     }
   };
-
+  const startCommunication = async () => {
+    await invoke("start_serial_communication");
+  };
   return (
     <>
     <Stack sx={{height: "100dvh"}}>
+    <Button onClick={startCommunication}>Start Communication</Button>
     <Box
       sx={{
         flexBasis: '50%',
@@ -371,6 +374,7 @@ const PortList = () => {
         gap: 2,
       }}
     >
+      
       {serialPorts?.map((port, index) => (
         <Card key={index} variant="soft">
           <CardContent>

@@ -58,9 +58,7 @@ const App = () => {
       sendNotification({ title: "Tauri", body: "Tauri is awesome!" });
     }
   };
-  const startCommunication = async () => {
-    await invoke("start_serial_communication");
-  };
+
   // React.useEffect(() => {
   //   invoke("start_monitoring");
   // }, []);
@@ -132,8 +130,7 @@ const App = () => {
                 </ListItemButton>
               </ListItem>
             </List>
-            <Button onClick={sendNotification1}>Send Notification</Button>
-            <Button onClick={startCommunication}>Start Communication</Button>
+           
         
         </Sheet>
         <Box sx={{ width: "100%" }}>
