@@ -20,6 +20,7 @@ const CounterpartyItemsList = () => {
   }, []);
 
   const deleteItem = (id) => {
+    console.log(id)
     invoke('cmd_delete_counterparty', { id })
       .then(() => setItems(items.filter(item => item.id !== id)))
       .catch(error => console.error('There was an error deleting the item!', error));
@@ -40,6 +41,7 @@ const CounterpartyItemsList = () => {
   }));
 
   const columns: GridColDef[] = [
+    { field: 'id', headerName: 'ID', minWidth: 25 },
     { field: 'formal_name', headerName: 'Formal Name', flex: 1, minWidth: 150 },
     { field: 'formal_address', headerName: 'Formal Address', flex: 1, minWidth: 150 },
     { field: 'bin', headerName: 'BIN', flex: 1, minWidth: 100 },

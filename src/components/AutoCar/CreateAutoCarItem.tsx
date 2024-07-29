@@ -11,7 +11,7 @@ const CreateAutoCarItem = () => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    invoke('cmd_create_car_weights_auto', { car_plate_number: carPlateNumber, photo, weight: parseFloat(weight) })
+    invoke('cmd_create_car_weights_auto', { carPlateNumber: carPlateNumber, photo, weight: parseFloat(weight) })
       .then(() => navigate('/auto'))
       .catch(error => console.error('There was an error creating the item!', error));
   };

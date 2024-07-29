@@ -8,7 +8,7 @@ use diesel::sqlite::Sqlite;
 #[diesel(table_name = crate::schema::car_weight_manual)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct CarWeightManual {
-    pub id: Option<i32>,
+    pub id: i32,
     pub brutto: f32,
     pub netto: f32,
     pub tara: f32,
@@ -36,7 +36,7 @@ pub struct NewCarWeightManual<'a> {
 #[diesel(table_name = crate::schema::car_weights_auto)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct CarWeightsAuto {
-    pub id: Option<i32>,
+    pub id: i32,
     pub car_plate_number: String,
     pub photo: Option<String>,
     pub weight: f32,
@@ -58,7 +58,7 @@ pub struct NewCarWeightsAuto<'a> {
 #[diesel(table_name = crate::schema::counterparty)]
 #[diesel(check_for_backend(Sqlite))]
 pub struct Counterparty {
-    pub id: Option<i32>,
+    pub id: i32,
     pub formal_name: String,
     pub formal_address: String,
     pub bin: String,

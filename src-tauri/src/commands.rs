@@ -1,5 +1,5 @@
 use tauri::command;
-use crate::{create_car_weight_manual, create_car_weights_auto, create_counterparty, establish_connection, get_all_car_weight_manuals, get_all_car_weights_auto, get_all_counterparties, get_car_weight_manual_by_id, get_car_weights_auto_by_id, get_counterparty_by_id, update_car_weight_manual, update_car_weights_auto, update_counterparty, CarWeightManual, CarWeightsAuto, Counterparty, NewCarWeightManual, NewCarWeightsAuto, NewCounterparty};
+use crate::{create_car_weight_manual, create_car_weights_auto, create_counterparty, delete_car_weight_manual, delete_car_weights_auto, delete_counterparty, establish_connection, export_car_weight_manual_to_excel, export_car_weights_auto_to_excel, get_all_car_weight_manuals, get_all_car_weights_auto, get_all_counterparties, get_car_weight_manual_by_id, get_car_weights_auto_by_id, get_counterparty_by_id, update_car_weight_manual, update_car_weights_auto, update_counterparty, CarWeightManual, CarWeightsAuto, Counterparty, NewCarWeightManual, NewCarWeightsAuto, NewCounterparty};
 
 #[command]
 pub fn cmd_get_all_car_weights_auto() -> Vec<CarWeightsAuto> {
@@ -136,4 +136,40 @@ pub fn cmd_update_counterparty(id: i32, formal_name: String, formal_address: Str
         full_name: &full_name,
     };
     update_counterparty(&mut conn, id, updated_counterparty)
+}
+
+
+#[command]
+pub fn cmd_delete_car_weight_manual(id: i32) -> bool {
+    let mut conn = establish_connection();
+    delete_car_weight_manual(&mut conn, id)
+}
+
+#[command]
+pub fn cmd_delete_car_weights_auto(id: i32) -> bool {
+    let mut conn = establish_connection();
+    delete_car_weights_auto(&mut conn, id)
+}
+
+#[command]
+pub fn cmd_delete_counterparty(id: i32) -> bool {
+    let mut conn = establish_connection();
+    let result = delete_counterparty(&mut conn, id);
+    if result {
+        println!("Successfully deleted counterparty with id {}", id);
+    } else {
+        println!("Failed to delete counterparty with id {}", id);
+    }
+    result
+}
+
+#[command]
+pub fn cmd_export_car_weight_manual_to_excel()  {
+    let mut conn = establish_connection();
+    export_car_weight_manual_to_excel(&mut conn);
+}
+#[command]
+pub fn cmd_export_car_weights_auto_to_excel()  {
+    let mut conn = establish_connection();
+    export_car_weights_auto_to_excel(&mut conn);
 }

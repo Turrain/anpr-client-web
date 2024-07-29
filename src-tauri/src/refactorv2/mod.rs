@@ -103,8 +103,11 @@ impl Device {
     }
 }
 
-fn extract_numbers_from_code_points(code_points: Vec<u8>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let numbers: Vec<u8> = code_points.iter()
+fn extract_numbers_from_code_points(
+    code_points: Vec<u8>,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let numbers: Vec<u8> = code_points
+        .iter()
         .filter_map(|&cp| {
             let ch = cp as u8 as char;
             if ch.is_digit(10) {
@@ -158,8 +161,6 @@ impl Port {
     //         }
     //     }
     // }
- 
-
 
     pub fn run(&self) {
         let base = self.base.clone();
@@ -279,7 +280,7 @@ impl Camera {
                     }
                     false => {
                         println!("Camera dont active.");
-                   //     break;
+                        //     break;
                     }
                 };
             }
@@ -318,7 +319,7 @@ impl DevicesState {
             results: Arc::new(Mutex::new(ResultState::new())),
         }
     }
-   
+
     pub fn monitor(&self, window: &Window) {
         println!("Starting monitor thread");
         let camera = self.camera.clone();
@@ -328,12 +329,12 @@ impl DevicesState {
         let window = window.clone();
         let port_callback = move |data: Vec<u8>| {
             let pb = port.lock().unwrap();
-           
+
             let mut history = pb.history.lock().unwrap();
             let tolerance = 1000; // Allowable differences
             let threshold = 4; // Minimum number of consecutive packets to trigger camera activation
             window.emit("data", vec_u8_to_i32(data)).unwrap();
-            
+
             if history.len() >= threshold {
                 let values = vec_vec_u8_to_vec_i32(history.clone());
                 match determine_trend(&values, 30) {
@@ -341,39 +342,58 @@ impl DevicesState {
                         if camera.lock().unwrap().get_active() == false {
                             camera.lock().unwrap().set_active(true);
                         }
-                   
+
                         window.emit("eventX", 2).unwrap();
                         println!("Trend is increasing");
-                    },
+                    }
                     Trend::Decreasing => {
                         camera.lock().unwrap().set_active(false);
-                        results.lock().unwrap().weight = weights_vec.lock().unwrap().iter().max().unwrap().to_owned();
+                        results.lock().unwrap().weight =
+                            weights_vec.lock().unwrap().iter().max().unwrap().to_owned();
                         window.emit("eventX", -1).unwrap();
                         println!("Results: {:?}", results.lock().unwrap());
                         println!("Trend is decreasing");
-                    },
+                    }
                     Trend::Uncertain => {
                         window.emit("eventX", 1).unwrap();
                         println!("Trend is uncertain");
-                    },
+                    }
                 }
 
-                if let Some(data) = find_most_frequent_with_tolerance(
-                    values.clone(),
-                    tolerance,
-                ) {
+                if let Some(data) = find_most_frequent_with_tolerance(values.clone(), tolerance) {
                     println!("Most frequent value: {}", data);
                     weights_vec.lock().unwrap().push(data);
                 }
 
                 history.clear();
             }
-          
+        };
+        let mut results2 = self.results.clone();
+        let camera_callback = move |data: Vec<u8>| {
+            results2.lock().unwrap().plate = vec_to_string_with_flair(data);
         };
         self.port
             .lock()
             .unwrap()
             .set_callback(Box::new(port_callback));
+        self.camera
+            .lock()
+            .unwrap()
+            .set_callback(Box::new(camera_callback));
+    }
+}
+
+fn vec_to_string_with_flair(bytes: Vec<u8>) -> String {
+    match String::from_utf8(bytes.clone()) {
+        Ok(s) => {
+            println!("Conversion successful! Your string is: {}", s);
+            s
+        }
+        Err(e) => {
+            println!("Oops! Encountered a UTF-8 error: {}", e);
+            println!("Trying lossy conversion...");
+            String::from_utf8_lossy(&bytes).into_owned()
+        }
     }
 }
 
@@ -455,7 +475,8 @@ fn determine_trend(values: &Vec<i32>, margin_of_error: usize) -> Trend {
 
     let total_changes = increasing_count + decreasing_count;
 
-    if (increasing_count as f64 / total_changes as f64 - 0.5).abs() < margin_of_error as f64 / 100.0 {
+    if (increasing_count as f64 / total_changes as f64 - 0.5).abs() < margin_of_error as f64 / 100.0
+    {
         return Trend::Uncertain;
     }
 

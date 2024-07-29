@@ -30,6 +30,8 @@ tauri-plugin-fs = "2.0.0-beta.10"
 tauri-plugin-shell = "2.0.0-beta.8"
 tauri-plugin-notification = "2.0.0-beta.9"
 chrono = "0.4.38"
+calamine = "0.25.0"
+rust_xlsxwriter = "0.72.0"
 
 
 [features]

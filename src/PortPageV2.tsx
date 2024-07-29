@@ -300,6 +300,7 @@ const PortList = () => {
   useEffect(() => {
     const unlistenData = listen("data", (event) => {
       console.log("Data:", event.payload); // it's an integer
+     // if(event.payload > 60000)  return;
       setData((prevData) => {
         const newData = [...prevData];
         newData[0].data = [
@@ -327,6 +328,7 @@ const PortList = () => {
     const fetchSerialPorts = async () => {
       try {
         const ports = await invoke("list_serial_ports2");
+        console.log(ports);
         setSerialPorts(ports);
       } catch (error) {
         console.error("Error fetching serial ports:", error);

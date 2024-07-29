@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Typography, CircularProgress, IconButton, Box } from '@mui/material';
 import { DataGrid, GridColDef, GridRowsProp } from '@mui/x-data-grid';
-import { Delete, Edit } from '@mui/icons-material';
+import { Add, Delete, Edit } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
+import { Button } from '@mui/joy';
 
 
 
@@ -78,6 +79,13 @@ const AutoCarItemsList = () => {
           <div style={{ height: '90dvh', width: '100%' }}>
         <DataGrid rows={rows} columns={columns} />
       </div>
+      <Box position="fixed" bottom={16} right={16}>
+        <Link to="/create-auto">
+          <Button startDecorator={<Add />}>Add Counterparty</Button>
+        </Link>
+
+             
+            </Box>
     </Box>
   );
 }

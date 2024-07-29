@@ -9,6 +9,6 @@ CREATE TABLE car_weight_manual (
     dest_to INTEGER,
     dest_from INTEGER,
     cargo_type TEXT NOT NULL,
-    FOREIGN KEY(dest_to) REFERENCES counterparty(id),
-    FOREIGN KEY(dest_from) REFERENCES counterparty(id)
+   FOREIGN KEY(dest_to) REFERENCES counterparty(id) ON DELETE CASCADE,
+    FOREIGN KEY(dest_from) REFERENCES counterparty(id) ON DELETE CASCADE
 );

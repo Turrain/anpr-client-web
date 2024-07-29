@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 
-import { Delete, Edit } from "@mui/icons-material";
+import { Add, Delete, Edit } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import { invoke } from '@tauri-apps/api/core';
 import { DataGrid, GridColDef, GridRowsProp } from "@mui/x-data-grid";
-import { Alert, AspectRatio, Box, Card, CardContent, Chip, CircularProgress, IconButton, Typography } from "@mui/joy";
+import { Alert, AspectRatio, Box, Button, Card, CardContent, Chip, CircularProgress, IconButton, Typography } from "@mui/joy";
 
 function CustomComponent() {
 
@@ -159,6 +159,13 @@ const ItemsList = () => {
       <div style={{ height: 'auto', width: '100%' }}>
         <DataGrid rows={rows} columns={columns} />
       </div>
+      <Box position="fixed" bottom={16} right={16}>
+        <Link to="/create-manual">
+          <Button startDecorator={<Add />}>Add Counterparty</Button>
+        </Link>
+
+             
+            </Box>
     </Box>
   );
 };

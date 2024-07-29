@@ -5,6 +5,7 @@ use diesel::sqlite::SqliteConnection;
 
 use dotenvy::dotenv;
 use std::env;
+use rust_xlsxwriter::*;
 
 use crate::models::{CarWeightManual, CarWeightsAuto, Counterparty, NewCarWeightManual, NewCarWeightsAuto, NewCounterparty};
 use crate::schema::{car_weight_manual, car_weights_auto, counterparty};
@@ -146,4 +147,103 @@ pub fn update_counterparty(conn: &mut SqliteConnection, entry_id: i32, updated_c
         .set(&updated_counterparty)
         .execute(conn)
         .is_ok()
+}
+
+
+
+pub fn delete_car_weight_manual(conn: &mut SqliteConnection, entry_id: i32) -> bool {
+    use crate::schema::car_weight_manual::dsl::*;
+
+    diesel::delete(car_weight_manual.filter(id.eq(entry_id)))
+        .execute(conn)
+        .is_ok()
+}
+
+pub fn delete_car_weights_auto(conn: &mut SqliteConnection, entry_id: i32) -> bool {
+    use crate::schema::car_weights_auto::dsl::*;
+
+    diesel::delete(car_weights_auto.filter(id.eq(entry_id)))
+        .execute(conn)
+        .is_ok()
+}
+
+pub fn delete_counterparty(conn: &mut SqliteConnection, entry_id: i32) -> bool {
+    use crate::schema::counterparty::dsl::*;
+    let test = counterparty.filter(id.eq(entry_id));
+    
+    match diesel::delete(counterparty.filter(id.eq(entry_id))).execute(conn) {
+        Ok(_) => true,
+        Err(err) => {
+            println!("Failed to delete counterparty with id {}: {}", entry_id, err);
+            false
+        }
+    }
+}
+
+
+
+pub fn export_car_weight_manual_to_excel(conn: &mut SqliteConnection) -> Result<(), XlsxError> {
+    // Query all car weight manual entries
+    let car_weight_manuals = crate::database::get_all_car_weight_manuals(conn);
+    let filepath = "./test_1.xlsx";
+    // Create a new Excel workbook and add a worksheet
+    let mut workbook = Workbook::new();
+    let worksheet = workbook.add_worksheet();
+
+    // Write headers
+    worksheet.write_string(0, 0, "ID")?;
+    worksheet.write_string(0, 1, "Brutto")?;
+    worksheet.write_string(0, 2, "Netto")?;
+    worksheet.write_string(0, 3, "Tara")?;
+    worksheet.write_string(0, 4, "Car Plate Number")?;
+    worksheet.write_string(0, 5, "Status")?;
+    worksheet.write_string(0, 6, "Dest To")?;
+    worksheet.write_string(0, 7, "Dest From")?;
+    worksheet.write_string(0, 8, "Cargo Type")?;
+
+    // Write data
+    for (i, entry) in car_weight_manuals.iter().enumerate() {
+        worksheet.write_number((i + 1) as u32, 0, entry.id as f64)?;
+        worksheet.write_number((i + 1) as u32, 1, entry.brutto as f64)?;
+        worksheet.write_number((i + 1) as u32, 2, entry.netto as f64)?;
+        worksheet.write_number((i + 1) as u32, 3, entry.tara as f64)?;
+        worksheet.write_string((i + 1) as u32, 4, &entry.car_plate_number)?;
+        worksheet.write_string((i + 1) as u32, 5, &entry.status)?;
+        worksheet.write_number((i + 1) as u32, 6, entry.dest_to.unwrap_or(0) as f64)?;
+        worksheet.write_number((i + 1) as u32, 7, entry.dest_from.unwrap_or(0) as f64)?;
+        worksheet.write_string((i + 1) as u32, 8, &entry.cargo_type)?;
+    }
+
+    // Save the workbook to the specified file path
+    workbook.save(filepath)?;
+
+    Ok(())
+}
+pub fn export_car_weights_auto_to_excel(conn: &mut SqliteConnection) -> Result<(), XlsxError> {
+    let car_weights_auto = crate::database::get_all_car_weights_auto(conn);
+
+    let mut workbook = Workbook::new();
+    let worksheet = workbook.add_worksheet();
+    let filepath = "./test_2.xlsx";
+    worksheet.write_string(0, 0, "ID")?;
+    worksheet.write_string(0, 1, "Car Plate Number")?;
+    worksheet.write_string(0, 2, "Photo")?;
+    worksheet.write_string(0, 3, "Weight")?;
+    worksheet.write_string(0, 4, "Time Created")?;
+    worksheet.write_string(0, 5, "Time Updated")?;
+
+    for (i, entry) in car_weights_auto.iter().enumerate() {
+        worksheet.write_number((i + 1) as u32, 0, entry.id as f64)?;
+        worksheet.write_string((i + 1) as u32, 1, &entry.car_plate_number)?;
+        if let Some(photo) = &entry.photo {
+            worksheet.write_string((i + 1) as u32, 2, photo)?;
+        }
+        worksheet.write_number((i + 1) as u32, 3, entry.weight as f64)?;
+        worksheet.write_string((i + 1) as u32, 4, &entry.time_created)?;
+        worksheet.write_string((i + 1) as u32, 5, &entry.time_updated)?;
+    }
+
+    workbook.save(filepath)?;
+
+    Ok(())
 }

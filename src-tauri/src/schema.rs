@@ -2,7 +2,7 @@
 
 diesel::table! {
     car_weight_manual (id) {
-        id -> Nullable<Integer>, 
+        id -> Integer,
         brutto -> Float,
         netto -> Float,
         tara -> Float,
@@ -16,7 +16,7 @@ diesel::table! {
 
 diesel::table! {
     car_weights_auto (id) {
-        id -> Nullable<Integer>,
+        id -> Integer,
         car_plate_number -> Text,
         photo -> Nullable<Text>,
         weight -> Float,
@@ -27,7 +27,7 @@ diesel::table! {
 
 diesel::table! {
     counterparty (id) {
-        id -> Nullable<Integer>,
+        id -> Integer,
         formal_name -> Text,
         formal_address -> Text,
         bin -> Text,

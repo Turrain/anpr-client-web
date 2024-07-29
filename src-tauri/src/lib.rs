@@ -120,7 +120,7 @@ fn start_serial_communication() {
             println!("Sent random data: {}", random_number);
             //  window.emit("sent-data", random_data).expect("Failed to emit event");
             // Sleep for a short duration to avoid overwhelming the ports
-            thread::sleep(Duration::from_millis(1500));
+            thread::sleep(Duration::from_millis(10));
         }
     });
 }
@@ -378,7 +378,12 @@ pub fn run() {
             cmd_get_counterparty_by_id,
             cmd_update_car_weight_manual,
             cmd_update_car_weights_auto,
-            cmd_update_counterparty
+            cmd_update_counterparty,
+            cmd_delete_car_weight_manual,
+            cmd_delete_car_weights_auto
+            ,cmd_delete_counterparty,
+            cmd_export_car_weight_manual_to_excel,
+            cmd_export_car_weights_auto_to_excel
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
