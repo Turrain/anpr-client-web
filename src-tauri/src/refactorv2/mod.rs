@@ -372,6 +372,7 @@ impl DevicesState {
         let camera_callback = move |data: Vec<u8>| {
             results2.lock().unwrap().plate = vec_to_string_with_flair(data);
         };
+        
         self.port
             .lock()
             .unwrap()
@@ -382,8 +383,8 @@ impl DevicesState {
             .set_callback(Box::new(camera_callback));
     }
 }
-
 fn vec_to_string_with_flair(bytes: Vec<u8>) -> String {
+    
     match String::from_utf8(bytes.clone()) {
         Ok(s) => {
             println!("Conversion successful! Your string is: {}", s);

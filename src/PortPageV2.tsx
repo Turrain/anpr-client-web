@@ -61,7 +61,7 @@ const PortSettingsDialog: React.FC<PortSettingsDialogProps> = ({
 
   useEffect(() => {
     const savedSettings = JSON.parse(
-      localStorage.getItem(portName) || "{}"
+      localStorage.getItem(portName) || "{}",
     ) as Partial<Settings>;
     setSettings((prev) => ({ ...prev, ...savedSettings }));
   }, [portName]);
@@ -170,7 +170,7 @@ const LineChart = ({ data, markers }) => {
       getValue: (datum) => datum.primary,
       scaleType: "time", // Explicitly set the scale type
     }),
-    []
+    [],
   );
 
   const secondaryAxes = React.useMemo(
@@ -180,7 +180,7 @@ const LineChart = ({ data, markers }) => {
         scaleType: "linear", // Explicitly set the scale type
       },
     ],
-    []
+    [],
   );
 
   return (
@@ -210,12 +210,14 @@ const LineChart = ({ data, markers }) => {
     </Box>
   );
 };
-const PortSettingsAccordion: React.FC<{ portName: string }> = ({ portName }) => {
+const PortSettingsAccordion: React.FC<{ portName: string }> = ({
+  portName,
+}) => {
   const [settings, setSettings] = useState<Partial<Settings>>({});
 
   useEffect(() => {
     const savedSettings = JSON.parse(
-      localStorage.getItem(portName) || "{}"
+      localStorage.getItem(portName) || "{}",
     ) as Partial<Settings>;
     setSettings((prev) => ({ ...prev, ...savedSettings }));
   }, [portName]);
@@ -231,51 +233,50 @@ const PortSettingsAccordion: React.FC<{ portName: string }> = ({ portName }) => 
 
   return (
     <AccordionGroup>
-    <Accordion>
-      <AccordionSummary>
-        <Avatar color="primary">
-          <Settings />
-        </Avatar>
-        <ListItemContent>
-          <Typography level="title-md">Settings</Typography>
-          <Typography level="body-sm">
-            Configure the serial port settings
-          </Typography>
-        </ListItemContent>
-      </AccordionSummary>
-      <AccordionDetails>
-        <Stack gap={0.2} sx={{ mt: 2 }}>
-          {Object.keys(settings).map((key) => (
-            <FormControl key={key} orientation="horizontal">
-              <FormLabel sx={{flexBasis: '50%'}}>
-                {key.charAt(0).toUpperCase() + key.slice(1)}
-              </FormLabel>
-              <Input
-              size="sm"
-                name={key}
-                value={settings[key]}
-                onChange={handleChange}
-                fullWidth
-              />
-            </FormControl>
-          ))}
-        </Stack>
-        <Stack
-          direction="row"
-          justifyContent="flex-end"
-          gap={1}
-          sx={{ mt: 2 }}
-        >
-          {/* <Button onClick={saveSettings} color="primary">
+      <Accordion>
+        <AccordionSummary>
+          <Avatar color="primary">
+            <Settings />
+          </Avatar>
+          <ListItemContent>
+            <Typography level="title-md">Settings</Typography>
+            <Typography level="body-sm">
+              Configure the serial port settings
+            </Typography>
+          </ListItemContent>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack gap={0.2} sx={{ mt: 2 }}>
+            {Object.keys(settings).map((key) => (
+              <FormControl key={key} orientation="horizontal">
+                <FormLabel sx={{ flexBasis: "50%" }}>
+                  {key.charAt(0).toUpperCase() + key.slice(1)}
+                </FormLabel>
+                <Input
+                  size="sm"
+                  name={key}
+                  value={settings[key]}
+                  onChange={handleChange}
+                  fullWidth
+                />
+              </FormControl>
+            ))}
+          </Stack>
+          <Stack
+            direction="row"
+            justifyContent="flex-end"
+            gap={1}
+            sx={{ mt: 2 }}
+          >
+            {/* <Button onClick={saveSettings} color="primary">
             Save
           </Button> */}
-        </Stack>
-      </AccordionDetails>
-    </Accordion>
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
     </AccordionGroup>
   );
 };
-
 
 interface SerialPort {
   port_name: string;
@@ -287,7 +288,6 @@ const PortList = () => {
 
   const [runningPort, setRunningPort] = useState(null);
 
- 
   const [data, setData] = useState([
     {
       label: "Series 1",
@@ -300,7 +300,7 @@ const PortList = () => {
   useEffect(() => {
     const unlistenData = listen("data", (event) => {
       console.log("Data:", event.payload); // it's an integer
-     // if(event.payload > 60000)  return;
+      // if(event.payload > 60000)  return;
       setData((prevData) => {
         const newData = [...prevData];
         newData[0].data = [
@@ -363,52 +363,48 @@ const PortList = () => {
   };
   return (
     <>
-    <Stack sx={{height: "100dvh"}}>
-    <Button onClick={startCommunication}>Start Communication</Button>
-    <Box
-      sx={{
-        flexBasis: '50%',
-        
-        p: 2,
-        width: "100%",
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
-        gap: 2,
-      }}
-    >
-      
-      {serialPorts?.map((port, index) => (
-        <Card key={index} variant="soft">
-          <CardContent>
-            <Typography level="h2">{port.port_name}</Typography>
-            <Typography level="title-lg">{port.port_type}</Typography>
-          </CardContent>
-          <PortSettingsAccordion portName={port.port_name} />
-          {runningPort === port.port_name ? (
-            <Button variant="solid" size="sm" onClick={stopReading}>
-              Остановить
-            </Button>
-          ) : (
-            <Button
-              variant="solid"
-              size="sm"
-              onClick={() => startReading(port.port_name)}
-              disabled={runningPort !== null}
-            >
-              Запустить
-            </Button>
-          )}
-        </Card>
-      ))}
-       
-    </Box>
+      <Stack sx={{ height: "100dvh" }}>
+        <Button onClick={startCommunication}>Start Communication</Button>
+        <Box
+          sx={{
+            flexBasis: "50%",
 
-    <Sheet sx={{     flexBasis: '50%',}} variant="soft">
-    {data && <LineChart data={data} markers={markers} />}
-    </Sheet>
-    </Stack>
-   
-  
+            p: 2,
+            width: "100%",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
+            gap: 2,
+          }}
+        >
+          {serialPorts?.map((port, index) => (
+            <Card key={index} variant="soft">
+              <CardContent>
+                <Typography level="h2">{port.port_name}</Typography>
+                <Typography level="title-lg">{port.port_type}</Typography>
+              </CardContent>
+              <PortSettingsAccordion portName={port.port_name} />
+              {runningPort === port.port_name ? (
+                <Button variant="solid" size="sm" onClick={stopReading}>
+                  Остановить
+                </Button>
+              ) : (
+                <Button
+                  variant="solid"
+                  size="sm"
+                  onClick={() => startReading(port.port_name)}
+                  disabled={runningPort !== null}
+                >
+                  Запустить
+                </Button>
+              )}
+            </Card>
+          ))}
+        </Box>
+
+        <Sheet sx={{ flexBasis: "50%" }} variant="soft">
+          {data && <LineChart data={data} markers={markers} />}
+        </Sheet>
+      </Stack>
     </>
   );
 };
