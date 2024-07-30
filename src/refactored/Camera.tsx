@@ -1,102 +1,55 @@
-import {
-  Button,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  FormLabel,
-  Input,
-  Modal,
-  ModalDialog,
-  Stack,
-} from "@mui/joy";
-import React from "react";
+import * as React from "react";
+import { useCameraStore } from "./stores/CameraStore";
+import CameraGrid from "./coms/CameraGrid";
+import AddCameraDialog from "./coms/AddCameraDialog";
+import EditCameraDialog from "./coms/CameraSettingsDialog";
 
-type CameraObject = {
-  url: string;
-  typeNumber: number;
-  driver: number;
-};
+const CameraPage: React.FC = () => {
+  const { cameras, addCamera, editCamera, deleteCamera } = useCameraStore();
 
-interface AddCameraDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onAdd: (cam: CameraObject) => void;
-}
+  const [openAddDialog, setOpenAddDialog] = React.useState(false);
+  const [cameraToEdit, setCameraToEdit] = React.useState(null);
 
-const AddCameraDialog: React.FC<AddCameraDialogProps> = ({
-  open,
-  onAdd,
-  onClose,
-}) => {
-  const [url, setUrl] = React.useState("");
-  const [typeNumber, setTypeNumber] = React.useState("");
-  const [driver, setDriver] = React.useState("");
+  const handleOpenAddDialog = () => setOpenAddDialog(true);
+  const handleCloseAddDialog = () => setOpenAddDialog(false);
 
-  const handleUrlChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setUrl(event.target.value);
+  const handleAddCamera = (camera) => {
+    addCamera(camera);
+    handleCloseAddDialog();
   };
 
-  const handleTypeNumberChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    setTypeNumber(event.target.value);
+  const handleEditCamera = (camera) => {
+    editCamera(camera);
+    setCameraToEdit(null);
   };
 
-  const handleDriverChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setDriver(event.target.value);
+  const handleDeleteCamera = (id) => {
+    deleteCamera(id);
   };
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <ModalDialog>
-        <DialogTitle> Add camera</DialogTitle>
-        <DialogContent>
-          <form
-            onSubmit={(event: React.FormEvent<HTMLFormElement>) => {
-              event.preventDefault();
-              const formData: CameraObject = {
-                url,
-                typeNumber: parseInt(typeNumber),
-                driver: parseInt(driver),
-              };
-              onAdd(formData);
-            }}
-          >
-            <Stack spacing={2}>
-              <FormControl>
-                <FormLabel>Url</FormLabel>
-                <Input
-                  autoFocus
-                  required
-                  onChange={(e) => handleUrlChange(e)}
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Type</FormLabel>
-                <Input
-                  autoFocus
-                  required
-                  onChange={(e) => handleTypeNumberChange(e)}
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Driver</FormLabel>
-                <Input
-                  autoFocus
-                  required
-                  onChange={(e) => handleDriverChange(e)}
-                />
-              </FormControl>
-              <Button color="neutral" variant="solid" onClick={() => onClose()}>
-                Close
-              </Button>
-              <Button color="primary" variant="solid" type="submit">
-                Submit
-              </Button>
-            </Stack>
-          </form>
-        </DialogContent>
-      </ModalDialog>
-    </Modal>
+    <>
+      <CameraGrid
+        cameras={cameras}
+        onAddCamera={handleOpenAddDialog}
+        onEditCamera={setCameraToEdit}
+        onDeleteCamera={handleDeleteCamera}
+      />
+      <AddCameraDialog
+        open={openAddDialog}
+        onClose={handleCloseAddDialog}
+        onAdd={handleAddCamera}
+      />
+      {cameraToEdit && (
+        <EditCameraDialog
+          open={Boolean(cameraToEdit)}
+          camera={cameraToEdit}
+          onClose={() => setCameraToEdit(null)}
+          onEdit={handleEditCamera}
+        />
+      )}
+    </>
   );
 };
+
+export default CameraPage;

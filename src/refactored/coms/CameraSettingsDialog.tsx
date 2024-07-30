@@ -17,20 +17,24 @@ type CameraObject = {
   driver: number;
 };
 
-interface AddCameraDialogProps {
+interface EditCameraDialogProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (cam: CameraObject) => void;
+  onEdit: (cam: CameraObject) => void;
+  camera: CameraObject;
 }
 
-const AddCameraDialog: React.FC<AddCameraDialogProps> = ({
+const EditCameraDialog: React.FC<EditCameraDialogProps> = ({
   open,
-  onAdd,
+  onEdit,
   onClose,
+  camera,
 }) => {
-  const [url, setUrl] = React.useState("");
-  const [typeNumber, setTypeNumber] = React.useState("");
-  const [driver, setDriver] = React.useState("");
+  const [url, setUrl] = React.useState(camera.url);
+  const [typeNumber, setTypeNumber] = React.useState(
+    camera.typeNumber.toString(),
+  );
+  const [driver, setDriver] = React.useState(camera.driver.toString());
 
   const handleUrlChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setUrl(event.target.value);
@@ -49,7 +53,7 @@ const AddCameraDialog: React.FC<AddCameraDialogProps> = ({
   return (
     <Modal open={open} onClose={onClose}>
       <ModalDialog>
-        <DialogTitle> Add camera</DialogTitle>
+        <DialogTitle> Edit camera</DialogTitle>
         <DialogContent>
           <form
             onSubmit={(event: React.FormEvent<HTMLFormElement>) => {
@@ -59,7 +63,7 @@ const AddCameraDialog: React.FC<AddCameraDialogProps> = ({
                 typeNumber: parseInt(typeNumber),
                 driver: parseInt(driver),
               };
-              onAdd(formData);
+              onEdit(formData);
             }}
           >
             <Stack spacing={2}>
@@ -68,6 +72,7 @@ const AddCameraDialog: React.FC<AddCameraDialogProps> = ({
                 <Input
                   autoFocus
                   required
+                  value={url}
                   onChange={(e) => handleUrlChange(e)}
                 />
               </FormControl>
@@ -76,6 +81,7 @@ const AddCameraDialog: React.FC<AddCameraDialogProps> = ({
                 <Input
                   autoFocus
                   required
+                  value={typeNumber}
                   onChange={(e) => handleTypeNumberChange(e)}
                 />
               </FormControl>
@@ -84,6 +90,7 @@ const AddCameraDialog: React.FC<AddCameraDialogProps> = ({
                 <Input
                   autoFocus
                   required
+                  value={driver}
                   onChange={(e) => handleDriverChange(e)}
                 />
               </FormControl>
@@ -100,5 +107,4 @@ const AddCameraDialog: React.FC<AddCameraDialogProps> = ({
     </Modal>
   );
 };
-
-export default AddCameraDialog;
+export default EditCameraDialog;

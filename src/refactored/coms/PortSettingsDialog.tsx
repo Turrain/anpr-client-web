@@ -24,6 +24,7 @@ interface PortSettingsDialogProps {
   open: boolean;
   port: string;
   onClose: () => void;
+  onEdit: () => void;
 }
 
 const PortSettingsDialog: React.FC<PortSettingsDialogProps> = ({
